@@ -253,7 +253,7 @@ export const Quiz = () => {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="p-3 flex-1 overflow-y-auto">
+              <CardContent className="p-3 flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 <div className="grid grid-cols-5 gap-1.5">
                   {paper.questions.map((_, idx) => (
                     <button
