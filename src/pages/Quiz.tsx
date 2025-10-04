@@ -110,119 +110,164 @@ export const Quiz = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto px-4 py-4 md:py-6">
         {/* Header */}
-        <Card className="mb-6 shadow-card">
-          <CardContent className="p-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <Card className="mb-4 shadow-card">
+          <CardContent className="p-3 md:p-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4">
               <div>
-                <h2 className="text-xl font-bold">{paper.title}</h2>
-                <p className="text-sm text-muted-foreground">
+                <h2 className="text-lg md:text-xl font-bold">{paper.title}</h2>
+                <p className="text-xs md:text-sm text-muted-foreground">
                   Question {currentQuestion + 1} of {paper.questions.length}
                 </p>
               </div>
-              <div className="flex items-center gap-6">
+              <div className="flex items-center gap-4 md:gap-6">
                 <div className="flex items-center gap-2">
-                  <Clock className={`h-5 w-5 ${timeLeft < 300 ? 'text-destructive' : 'text-muted-foreground'}`} />
-                  <span className={`text-lg font-mono font-semibold ${timeLeft < 300 ? 'text-destructive' : 'text-foreground'}`}>
+                  <Clock className={`h-4 w-4 md:h-5 md:w-5 ${timeLeft < 300 ? 'text-destructive' : 'text-muted-foreground'}`} />
+                  <span className={`text-base md:text-lg font-mono font-semibold ${timeLeft < 300 ? 'text-destructive' : 'text-foreground'}`}>
                     {formatTime(timeLeft)}
                   </span>
                 </div>
-                <div className="text-sm text-muted-foreground">
+                <div className="text-xs md:text-sm text-muted-foreground">
                   Answered: {answeredCount}/{paper.questions.length}
                 </div>
               </div>
             </div>
-            <Progress value={progress} className="mt-4" />
+            <Progress value={progress} className="mt-3" />
           </CardContent>
         </Card>
 
-        {/* Question */}
-        <Card className="shadow-elegant">
-          <CardHeader>
-            <CardTitle className="text-lg">
-              Question {question.id}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <p className="text-lg leading-relaxed">{question.question}</p>
+        {/* Main Content - Two Column Layout on Large Screens */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr,280px] gap-4 lg:items-start">
+          {/* Question Section */}
+          <Card className="shadow-elegant">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base md:text-lg">
+                Question {question.id}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-base md:text-lg leading-relaxed">{question.question}</p>
 
-            <RadioGroup
-              value={answers[currentQuestion]?.toString()}
-              onValueChange={handleAnswerChange}
-              className="space-y-3"
-            >
-              {question.options.map((option, idx) => (
-                <div
-                  key={idx}
-                  className={`flex items-center space-x-3 p-4 rounded-lg border-2 transition-all ${
-                    answers[currentQuestion] === idx
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:border-primary/50 hover:bg-secondary/50'
-                  }`}
-                >
-                  <RadioGroupItem value={idx.toString()} id={`option-${idx}`} />
-                  <Label
-                    htmlFor={`option-${idx}`}
-                    className="flex-1 cursor-pointer text-base"
-                  >
-                    {option}
-                  </Label>
-                </div>
-              ))}
-            </RadioGroup>
-
-            {/* Navigation */}
-            <div className="flex flex-col sm:flex-row gap-3 pt-4">
-              <Button
-                onClick={handlePrevious}
-                disabled={currentQuestion === 0}
-                variant="outline"
-                className="flex-1"
+              <RadioGroup
+                value={answers[currentQuestion]?.toString()}
+                onValueChange={handleAnswerChange}
+                className="space-y-2 pt-1"
               >
-                Previous
-              </Button>
-              
-              {currentQuestion === paper.questions.length - 1 ? (
-                <Button
-                  onClick={() => setShowSubmitDialog(true)}
-                  className="flex-1 bg-gradient-primary"
-                >
-                  Submit Quiz
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleNext}
-                  className="flex-1"
-                >
-                  Next Question
-                </Button>
-              )}
-            </div>
-
-            {/* Question Navigation Grid */}
-            <div className="pt-4 border-t">
-              <p className="text-sm text-muted-foreground mb-3">Quick Navigation:</p>
-              <div className="grid grid-cols-10 gap-2">
-                {paper.questions.map((_, idx) => (
-                  <button
+                {question.options.map((option, idx) => (
+                  <div
                     key={idx}
-                    onClick={() => setCurrentQuestion(idx)}
-                    className={`aspect-square rounded-md text-sm font-medium transition-all ${
-                      idx === currentQuestion
-                        ? 'bg-primary text-primary-foreground scale-110 shadow-md'
-                        : answers[idx] !== -1
-                        ? 'bg-success/20 text-success border-2 border-success'
-                        : 'bg-secondary text-muted-foreground hover:bg-secondary/70'
+                    className={`flex items-center space-x-3 p-3 rounded-lg border-2 transition-all ${
+                      answers[currentQuestion] === idx
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50 hover:bg-secondary/50'
                     }`}
                   >
-                    {idx + 1}
-                  </button>
+                    <RadioGroupItem value={idx.toString()} id={`option-${idx}`} />
+                    <Label
+                      htmlFor={`option-${idx}`}
+                      className="flex-1 cursor-pointer text-sm md:text-base"
+                    >
+                      {option}
+                    </Label>
+                  </div>
                 ))}
+              </RadioGroup>
+
+              {/* Navigation Buttons */}
+              <div className="flex flex-col sm:flex-row gap-2 pt-3">
+                <Button
+                  onClick={handlePrevious}
+                  disabled={currentQuestion === 0}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Previous
+                </Button>
+                
+                {currentQuestion === paper.questions.length - 1 ? (
+                  <Button
+                    onClick={() => setShowSubmitDialog(true)}
+                    className="flex-1 bg-gradient-primary"
+                  >
+                    Submit Quiz
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleNext}
+                    className="flex-1"
+                  >
+                    Next Question
+                  </Button>
+                )}
               </div>
-            </div>
-          </CardContent>
-        </Card>
+
+              {/* Mobile Quick Navigation */}
+              <div className="lg:hidden pt-3 border-t">
+                <p className="text-sm text-muted-foreground mb-2">Quick Navigation:</p>
+                <div className="grid grid-cols-10 gap-1.5">
+                  {paper.questions.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentQuestion(idx)}
+                      className={`aspect-square rounded-md text-xs font-medium transition-all ${
+                        idx === currentQuestion
+                          ? 'bg-primary text-primary-foreground scale-105 shadow-md'
+                          : answers[idx] !== -1
+                          ? 'bg-success/20 text-success border-2 border-success'
+                          : 'bg-secondary text-muted-foreground hover:bg-secondary/70'
+                      }`}
+                    >
+                      {idx + 1}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Desktop Quick Navigation Sidebar */}
+          <div className="hidden lg:block">
+            <Card className="shadow-elegant sticky top-4">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold">Quick Navigation</CardTitle>
+              </CardHeader>
+              <CardContent className="p-3">
+                <div className="grid grid-cols-5 gap-1.5">
+                  {paper.questions.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentQuestion(idx)}
+                      className={`aspect-square rounded text-xs font-medium transition-all ${
+                        idx === currentQuestion
+                          ? 'bg-primary text-primary-foreground shadow-md ring-2 ring-primary ring-offset-1'
+                          : answers[idx] !== -1
+                          ? 'bg-success/20 text-success border border-success hover:bg-success/30'
+                          : 'bg-secondary text-muted-foreground hover:bg-secondary/70'
+                      }`}
+                    >
+                      {idx + 1}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3 pt-3 border-t space-y-1.5 text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-primary"></div>
+                    <span className="text-muted-foreground">Current</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-success/20 border border-success"></div>
+                    <span className="text-muted-foreground">Answered</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-secondary"></div>
+                    <span className="text-muted-foreground">Not Answered</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
 
         {/* Submit Dialog */}
         <AlertDialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
