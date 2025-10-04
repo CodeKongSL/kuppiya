@@ -138,15 +138,15 @@ export const Quiz = () => {
         </Card>
 
         {/* Main Content - Two Column Layout on Large Screens */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr,280px] gap-4 lg:items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr,1fr] gap-4 lg:items-start">
           {/* Question Section */}
-          <Card className="shadow-elegant">
-            <CardHeader className="pb-2">
+          <Card className="shadow-elegant lg:h-[calc(100vh-240px)] lg:flex lg:flex-col">
+            <CardHeader className="pb-2 lg:flex-shrink-0">
               <CardTitle className="text-base md:text-lg">
                 Question {question.id}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-3 lg:flex-1 lg:flex lg:flex-col lg:overflow-y-auto">
               <p className="text-base md:text-lg leading-relaxed">{question.question}</p>
 
               <RadioGroup
@@ -175,7 +175,7 @@ export const Quiz = () => {
               </RadioGroup>
 
               {/* Navigation Buttons */}
-              <div className="flex flex-col sm:flex-row gap-2 pt-3">
+              <div className="flex flex-col sm:flex-row gap-2 pt-3 lg:mt-auto lg:flex-shrink-0">
                 <Button
                   onClick={handlePrevious}
                   disabled={currentQuestion === 0}
@@ -228,41 +228,48 @@ export const Quiz = () => {
 
           {/* Desktop Quick Navigation Sidebar */}
           <div className="hidden lg:block">
-            <Card className="shadow-elegant sticky top-4">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold">Quick Navigation</CardTitle>
+            <Card className="shadow-elegant sticky top-4 lg:h-[calc(100vh-240px)] flex flex-col">
+              <CardHeader className="pb-3 flex-shrink-0">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="text-sm font-semibold">Quick Navigation</CardTitle>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {answeredCount} of {paper.questions.length} answered
+                    </p>
+                  </div>
+                  <div className="space-y-1.5 text-[10px]">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2.5 h-2.5 rounded bg-primary"></div>
+                      <span className="text-muted-foreground">Current</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2.5 h-2.5 rounded bg-green-500/15 border border-green-500/40"></div>
+                      <span className="text-muted-foreground">Answered</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2.5 h-2.5 rounded bg-muted"></div>
+                      <span className="text-muted-foreground">Unanswered</span>
+                    </div>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="p-3">
+              <CardContent className="p-3 flex-1 overflow-y-auto">
                 <div className="grid grid-cols-5 gap-1.5">
                   {paper.questions.map((_, idx) => (
                     <button
                       key={idx}
                       onClick={() => setCurrentQuestion(idx)}
-                      className={`aspect-square rounded text-xs font-medium transition-all ${
+                      className={`w-11 h-11 rounded text-xs font-medium transition-all ${
                         idx === currentQuestion
-                          ? 'bg-primary text-primary-foreground shadow-md ring-2 ring-primary ring-offset-1'
+                          ? 'bg-primary text-primary-foreground shadow-md ring-2 ring-primary/30 ring-offset-1'
                           : answers[idx] !== -1
-                          ? 'bg-success/20 text-success border border-success hover:bg-success/30'
-                          : 'bg-secondary text-muted-foreground hover:bg-secondary/70'
+                          ? 'bg-green-500/15 text-green-700 dark:text-green-400 border border-green-500/40 hover:bg-green-500/20'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground'
                       }`}
                     >
                       {idx + 1}
                     </button>
                   ))}
-                </div>
-                <div className="mt-3 pt-3 border-t space-y-1.5 text-xs">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-primary"></div>
-                    <span className="text-muted-foreground">Current</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-success/20 border border-success"></div>
-                    <span className="text-muted-foreground">Answered</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-secondary"></div>
-                    <span className="text-muted-foreground">Not Answered</span>
-                  </div>
                 </div>
               </CardContent>
             </Card>
