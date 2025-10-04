@@ -56,12 +56,12 @@ export const Dashboard = () => {
             Master your exams with 10 years of past papers. Practice, learn, and track your progress.
           </p>
           <Button 
-            onClick={() => navigate('/papers')}
+            onClick={() => navigate('/subjects')}
             size="lg"
             variant="secondary"
             className="shadow-lg hover:shadow-xl transition-all"
           >
-            Browse Exam Papers
+            Choose Subject
           </Button>
         </div>
 

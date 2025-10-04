@@ -12,7 +12,7 @@ export const Navigation = () => {
 
   const navLinks = [
     { path: "/", label: "Dashboard", icon: Home },
-    { path: "/papers", label: "Exam Papers", icon: BookOpen },
+    { path: "/subjects", label: "Subjects", icon: BookOpen },
     { path: "/history", label: "History", icon: BarChart3 },
   ];
 

@@ -9,6 +9,7 @@ export interface Question {
 export interface ExamPaper {
   id: string;
   year: number;
+  subject: 'Bio' | 'Chemistry' | 'Physics';
   title: string;
   questions: Question[];
   duration: number; // in minutes
@@ -26,16 +27,20 @@ export interface AttemptHistory {
   answers: number[];
 }
 
-// Generate dummy questions
-const generateQuestions = (year: number): Question[] => {
-  const subjects = ['Biology', 'Chemistry', 'Physics', 'Mathematics', 'Computer Science'];
+// Generate dummy questions based on subject
+const generateQuestions = (year: number, subject: string): Question[] => {
   const questions: Question[] = [];
   
+  const questionTemplates: Record<string, string> = {
+    Bio: 'Which of the following best describes the process of cellular respiration in mitochondria?',
+    Chemistry: 'Which statement correctly describes the behavior of electrons in a chemical bond?',
+    Physics: 'Which of the following statements best describes the relationship between energy conservation and thermodynamic principles in a closed system?'
+  };
+  
   for (let i = 1; i <= 50; i++) {
-    const subject = subjects[Math.floor(Math.random() * subjects.length)];
     questions.push({
       id: i,
-      question: `${subject} Question ${i} (${year}): Which of the following statements best describes the relationship between energy conservation and thermodynamic principles in a closed system?`,
+      question: `${subject} Question ${i} (${year}): ${questionTemplates[subject] || questionTemplates.Physics}`,
       options: [
         'Energy can be created and destroyed within the system boundaries',
         'Total energy remains constant while entropy tends to increase',
@@ -50,17 +55,27 @@ const generateQuestions = (year: number): Question[] => {
   return questions;
 };
 
-// Generate 10 years of past papers
-export const examPapers: ExamPaper[] = Array.from({ length: 10 }, (_, i) => {
-  const year = 2024 - i;
-  return {
-    id: `paper-${year}`,
-    year,
-    title: `Annual Examination ${year}`,
-    questions: generateQuestions(year),
-    duration: 60 // 60 minutes
-  };
+// Generate 10 papers for each of 3 subjects (30 total)
+export const examPapers: ExamPaper[] = [];
+const subjects: Array<'Bio' | 'Chemistry' | 'Physics'> = ['Bio', 'Chemistry', 'Physics'];
+
+subjects.forEach(subject => {
+  for (let i = 0; i < 10; i++) {
+    const year = 2024 - i;
+    examPapers.push({
+      id: `${subject.toLowerCase()}-${year}`,
+      year,
+      subject,
+      title: `${subject} Examination ${year}`,
+      questions: generateQuestions(year, subject),
+      duration: 60 // 60 minutes
+    });
+  }
 });
+
+export const getPapersBySubject = (subject: string): ExamPaper[] => {
+  return examPapers.filter(p => p.subject === subject);
+};
 
 // Helper functions for localStorage
 export const saveAttempt = (attempt: AttemptHistory) => {

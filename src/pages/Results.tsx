@@ -138,12 +138,12 @@ export const Results = () => {
             Review Answers
           </Button>
           <Button 
-            onClick={() => navigate('/papers')}
+            onClick={() => navigate('/subjects')}
             variant="outline"
             className="flex-1"
             size="lg"
           >
-            Try Another Paper
+            Try Another Subject
           </Button>
           <Button 
             onClick={() => navigate('/')}
