@@ -79,11 +79,11 @@ export const PapersList = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {subject === 'Bio' ? (
-              bioPapers.map((paper) => (
+              bioPapers.map((paper, index) => (
                 <PaperCard 
-                  key={paper.id} 
+                  key={paper.paper_id || `bio-paper-${index}`}
                   paper={{
-                    id: paper.id,
+                    id: paper.paper_id || `PAPER-${paper.year}-${index}`,
                     year: paper.year,
                     subject: 'Bio',
                     title: paper.title || `Bio Examination ${paper.year}`,
