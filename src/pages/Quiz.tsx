@@ -166,7 +166,8 @@ export const Quiz = () => {
       bioQuestion.option_b,
       bioQuestion.option_c,
       bioQuestion.option_d,
-    ];
+      bioQuestion.option_e,
+    ].filter(Boolean); // Remove undefined/empty if any
 
     return (
       <div className="min-h-screen bg-background">

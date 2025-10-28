@@ -7,6 +7,7 @@ export interface BioQuestion {
   option_b: string;
   option_c: string;
   option_d: string;
+  option_e?: string; // Added for 5th option
   correct_answer: string;
   explanation?: string;
   createdAt?: string;
