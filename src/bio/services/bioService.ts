@@ -74,24 +74,36 @@ export const bioService = {
       }
 
       const data = await response.json();
-      
       console.log('Question API Response:', data); // Debug log
-      
-      // Handle different response formats
+
+      // Extract the question object from possible response formats
+      let question: any = null;
       if (data.success && data.data) {
-        return data.data;
+        question = data.data;
+      } else if (data.data) {
+        question = data.data;
+      } else if (data.question_number) {
+        question = data;
       }
-      
-      if (data.data) {
-        return data.data;
+
+      if (!question) {
+        throw new Error('Unexpected response format');
       }
-      
-      // If data itself is the question
-      if (data.question_number) {
-        return data;
+
+      // If question.options is an array, map to option_a, option_b, ...
+      if (Array.isArray(question.options)) {
+        const mapped = {
+          ...question,
+          option_a: question.options[0] || '',
+          option_b: question.options[1] || '',
+          option_c: question.options[2] || '',
+          option_d: question.options[3] || '',
+          option_e: question.options[4] || '',
+        };
+        return mapped;
       }
-      
-      throw new Error('Unexpected response format');
+
+      return question;
     } catch (error) {
       console.error('Error fetching biology question:', error);
       throw error;
