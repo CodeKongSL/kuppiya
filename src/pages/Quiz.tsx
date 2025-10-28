@@ -214,7 +214,17 @@ export const Quiz = () => {
                   </div>
                 ) : (
                   <>
-                    <p className="text-base md:text-lg leading-relaxed">{bioQuestion.question_text}</p>
+                    {bioQuestion.question_text.includes('\n') ? (
+                      <div className="text-base md:text-lg leading-relaxed">
+                        {/* Add extra space before the first line */}
+                        <div style={{ height: '1.2em' }} />
+                        {bioQuestion.question_text.split('\n').map((line, idx) => (
+                          <div key={idx} style={{ marginBottom: '1.2em' }}>{line}</div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-base md:text-lg leading-relaxed">{bioQuestion.question_text}</p>
+                    )}
 
                     <RadioGroup
                       value={answers[currentQuestion]?.toString()}
