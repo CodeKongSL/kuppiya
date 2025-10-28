@@ -1,11 +1,11 @@
 export interface BioPaper {
-  id: string;
+  paper_id: string;
   year: number;
   title: string;
-  questions: number;
+  total_questions: number;
   duration: number;
-  createdAt?: string;
-  updatedAt?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface BioPaperResponse {

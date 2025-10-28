@@ -14,6 +14,17 @@ export const PaperCard = ({ paper }: PaperCardProps) => {
   const attempts = getAttemptsByPaper(paper.id);
   const lastAttempt = attempts[attempts.length - 1];
 
+
+  // Check if this is a Biology paper (ID starts with "PAPER-")
+  // For Bio, prefer paper.paper_id if available
+  const isBioPaper = (paper.id && paper.id.startsWith('PAPER-')) || false;
+
+  const handleStartPractice = () => {
+    // For Bio, use paper.paper_id if available
+    const quizId = isBioPaper && (paper as any).paper_id ? (paper as any).paper_id : paper.id;
+    navigate(`/quiz/${quizId}`);
+  };
+
   return (
     <Card className="shadow-card hover:shadow-elegant transition-all duration-300 hover:-translate-y-1 bg-gradient-card">
       <CardHeader>
@@ -36,7 +47,11 @@ export const PaperCard = ({ paper }: PaperCardProps) => {
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-1">
             <FileText className="h-4 w-4" />
-            <span>{paper.questions.length} Questions</span>
+            <span>
+              {isBioPaper 
+                ? '50 Questions' 
+                : `${paper.questions.length} Questions`}
+            </span>
           </div>
           <div className="flex items-center gap-1">
             <Clock className="h-4 w-4" />
@@ -59,7 +74,7 @@ export const PaperCard = ({ paper }: PaperCardProps) => {
         )}
 
         <Button 
-          onClick={() => navigate(`/quiz/${paper.id}`)}
+          onClick={handleStartPractice}
           className="w-full bg-gradient-primary hover:opacity-90 transition-opacity"
         >
           {attempts.length > 0 ? 'Practice Again' : 'Start Practice'}
