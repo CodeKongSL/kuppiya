@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, RefreshCw, Clock } from "lucide-react";
 import { getPapersBySubject } from "@/data/examData";
 import { PaperCard } from "@/components/PaperCard";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,8 @@ export const PapersList = () => {
   const [bioPapers, setBioPapers] = useState<BioPaper[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [cacheInfo, setCacheInfo] = useState<string | null>(null);
 
   useEffect(() => {
     if (subject === 'Bio') {
@@ -21,18 +23,46 @@ export const PapersList = () => {
     }
   }, [subject]);
 
-  const fetchBiologyPapers = async () => {
+  const fetchBiologyPapers = async (forceRefresh = false) => {
     setLoading(true);
     setError(null);
+    
     try {
-      const papers = await bioService.getAllBiologyPapers();
+      // Get cache status before fetching
+      const cacheStatus = bioService.getCacheStatus();
+      
+      if (cacheStatus.isCached && !forceRefresh) {
+        const expiresInMinutes = Math.round(cacheStatus.expiresIn! / 60000);
+        setCacheInfo(`Using cached data (${cacheStatus.paperCount} papers, expires in ${expiresInMinutes}m)`);
+      } else {
+        setCacheInfo(null);
+      }
+
+      const papers = await bioService.getAllBiologyPapers(forceRefresh);
       setBioPapers(papers);
+      
+      if (forceRefresh) {
+        setCacheInfo(`Refreshed! Loaded ${papers.length} papers`);
+        setTimeout(() => setCacheInfo(null), 3000);
+      }
     } catch (err) {
       setError('Failed to load biology papers. Please try again later.');
       console.error('Error loading biology papers:', err);
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchBiologyPapers(true);
+  };
+
+  const handleClearCache = () => {
+    bioService.clearCache();
+    setCacheInfo('Cache cleared');
+    fetchBiologyPapers(true);
   };
 
   if (!subject) {
@@ -46,52 +76,111 @@ export const PapersList = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
-        <Button
-          onClick={() => navigate('/subjects')}
-          variant="ghost"
-          className="mb-6"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Subjects
-        </Button>
+        <div className="flex items-center justify-between mb-6">
+          <Button
+            onClick={() => navigate('/subjects')}
+            variant="ghost"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Subjects
+          </Button>
+
+          {subject === 'Bio' && !loading && (
+            <div className="flex gap-2">
+              <Button
+                onClick={handleRefresh}
+                variant="outline"
+                size="sm"
+                disabled={isRefreshing}
+              >
+                {isRefreshing ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                Refresh
+              </Button>
+              <Button
+                onClick={handleClearCache}
+                variant="ghost"
+                size="sm"
+              >
+                Clear Cache
+              </Button>
+            </div>
+          )}
+        </div>
 
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">
             {subject === 'Bio' ? 'Biology' : subject} Exam Papers
           </h1>
-          <p className="text-muted-foreground text-lg">
-            {loading 
-              ? 'Loading papers...' 
-              : `Choose from ${papers.length} years of past examination papers`}
-          </p>
+          <div className="flex items-center gap-3">
+            <p className="text-muted-foreground text-lg">
+              {loading 
+                ? 'Loading papers...' 
+                : `Choose from ${papers.length} years of past examination papers`}
+            </p>
+            {subject === 'Bio' && cacheInfo && !loading && (
+              <span className="text-sm text-muted-foreground/70 flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {cacheInfo}
+              </span>
+            )}
+          </div>
         </div>
+
+
 
         {error && (
           <Alert variant="destructive" className="mb-6">
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>
+              {error}
+              {bioPapers.length > 0 && (
+                <span className="block mt-2 text-sm">
+                  Showing cached papers from previous session.
+                </span>
+              )}
+            </AlertDescription>
           </Alert>
         )}
 
-        {loading ? (
-          <div className="flex justify-center items-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        {loading && bioPapers.length === 0 ? (
+          <div className="flex flex-col justify-center items-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+            <p className="text-muted-foreground">Loading papers from server...</p>
+            <p className="text-sm text-muted-foreground mt-2">This may take a moment for the first load</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {subject === 'Bio' ? (
-              bioPapers.map((paper, index) => (
-                <PaperCard 
-                  key={paper.paper_id || `bio-paper-${index}`}
-                  paper={{
-                    id: paper.paper_id || `PAPER-${paper.year}-${index}`,
-                    year: paper.year,
-                    subject: 'Bio',
-                    title: paper.title || `Bio Examination ${paper.year}`,
-                    questions: [],
-                    duration: paper.duration || 60,
-                  }} 
-                />
-              ))
+              bioPapers.length > 0 ? (
+                bioPapers.map((paper, index) => (
+                  <PaperCard 
+                    key={paper.paper_id || `bio-paper-${index}`}
+                    paper={{
+                      id: paper.paper_id || `PAPER-${paper.year}-${index}`,
+                      year: paper.year,
+                      subject: 'Bio',
+                      title: paper.title || `Bio Examination ${paper.year}`,
+                      questions: [],
+                      duration: paper.duration || 60,
+                    }} 
+                  />
+                ))
+              ) : (
+                <div className="col-span-full text-center py-12">
+                  <p className="text-muted-foreground text-lg">No papers available yet</p>
+                  <Button 
+                    onClick={handleRefresh} 
+                    variant="outline" 
+                    className="mt-4"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Try Again
+                  </Button>
+                </div>
+              )
             ) : (
               papers.map((paper) => (
                 <PaperCard key={paper.id} paper={paper} />
