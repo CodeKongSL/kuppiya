@@ -6,7 +6,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 // Cache configuration
 const CACHE_KEY = 'bio_papers_cache';
 const CACHE_EXPIRY_KEY = 'bio_papers_cache_expiry';
-const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
 interface CacheData {
   papers: BioPaper[];
@@ -15,7 +15,7 @@ interface CacheData {
 
 // Question cache for individual questions
 const questionCache = new Map<string, { question: BioQuestion; timestamp: number }>();
-const QUESTION_CACHE_DURATION = 60 * 60 * 1000; // 60 minutes
+const QUESTION_CACHE_DURATION = 2 * 60 * 60 * 1000; // 2 hours
 
 export const bioService = {
   /**
