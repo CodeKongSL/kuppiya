@@ -1,0 +1,242 @@
+import { ChemistryPaper } from '../models/ChemistryPaper';
+import { ChemistryQuestion } from '../models/ChemistryQuestion';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+// Cache configuration
+const CACHE_KEY = 'chemistry_papers_cache';
+const CACHE_EXPIRY_KEY = 'chemistry_papers_cache_expiry';
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+interface CacheData {
+  papers: ChemistryPaper[];
+  timestamp: number;
+}
+
+// Question cache for individual questions
+const questionCache = new Map<string, { question: ChemistryQuestion; timestamp: number }>();
+const QUESTION_CACHE_DURATION = 2 * 60 * 60 * 1000; // 2 hours
+
+export const chemistryService = {
+  /**
+   * Get all chemistry papers with caching support
+   * @param forceRefresh - Force fetch from API even if cache is valid
+   */
+  async getAllChemistryPapers(forceRefresh = false): Promise<ChemistryPaper[]> {
+    try {
+      // Check cache first (unless force refresh)
+      if (!forceRefresh) {
+        const cachedData = this.getCachedPapers();
+        if (cachedData) {
+          console.log('Using cached chemistry papers');
+          return cachedData;
+        }
+      }
+
+      console.log('Fetching chemistry papers from API...');
+      const response = await fetch(`${API_BASE_URL}/FindAll/Chemistry/Papers`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Handle different response formats
+      let papers: ChemistryPaper[] = [];
+      
+      if (Array.isArray(data)) {
+        papers = data;
+      } else if (data.success && data.data) {
+        papers = data.data;
+      } else if (data.data && Array.isArray(data.data)) {
+        papers = data.data;
+      } else if (data.papers && Array.isArray(data.papers)) {
+        papers = data.papers;
+      } else {
+        console.error('Unexpected response format:', JSON.stringify(data, null, 2));
+        throw new Error('Unexpected response format');
+      }
+
+      // Cache the papers
+      this.cachePapers(papers);
+      console.log(`Successfully loaded and cached ${papers.length} chemistry papers`);
+      
+      return papers;
+    } catch (error) {
+      console.error('Error fetching chemistry papers:', error);
+      
+      // On error, try to return cached data even if expired
+      const cachedData = this.getCachedPapers(true);
+      if (cachedData) {
+        console.warn('API failed, using expired cache');
+        return cachedData;
+      }
+      
+      throw error;
+    }
+  },
+
+  /**
+   * Get a specific question with caching
+   */
+  async getQuestionByNumber(
+    paperId: string, 
+    questionNumber: number,
+    useCache = true
+  ): Promise<ChemistryQuestion> {
+    const cacheKey = `${paperId}_${questionNumber}`;
+    
+    // Check cache first
+    if (useCache) {
+      const cached = questionCache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < QUESTION_CACHE_DURATION) {
+        console.log(`Using cached question ${questionNumber}`);
+        return cached.question;
+      }
+    }
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/Find/Question/Id?paper_id=${paperId}&question_number=${questionNumber}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // Extract the question object from possible response formats
+      let question: ChemistryQuestion;
+      if (data.success && data.data) {
+        question = data.data;
+      } else if (data.data) {
+        question = data.data;
+      } else if (data.question_number) {
+        question = data;
+      } else {
+        throw new Error('Unexpected response format');
+      }
+
+      // Cache the question
+      questionCache.set(cacheKey, {
+        question,
+        timestamp: Date.now()
+      });
+
+      return question;
+    } catch (error) {
+      console.error('Error fetching chemistry question:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Prefetch multiple questions for better performance
+   */
+  async prefetchQuestions(paperId: string, questionNumbers: number[]): Promise<void> {
+    const promises = questionNumbers.map(num => 
+      this.getQuestionByNumber(paperId, num).catch(err => {
+        console.warn(`Failed to prefetch question ${num}:`, err);
+        return null;
+      })
+    );
+    
+    await Promise.all(promises);
+    console.log(`Prefetched ${questionNumbers.length} questions`);
+  },
+
+  /**
+   * Get cached papers from localStorage
+   */
+  getCachedPapers(ignoreExpiry = false): ChemistryPaper[] | null {
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      const expiry = localStorage.getItem(CACHE_EXPIRY_KEY);
+      
+      if (!cached || !expiry) {
+        return null;
+      }
+
+      const expiryTime = parseInt(expiry, 10);
+      const now = Date.now();
+
+      // Check if cache is still valid
+      if (!ignoreExpiry && now > expiryTime) {
+        console.log('Cache expired');
+        this.clearCache();
+        return null;
+      }
+
+      const cacheData: CacheData = JSON.parse(cached);
+      return cacheData.papers;
+    } catch (error) {
+      console.error('Error reading cache:', error);
+      this.clearCache();
+      return null;
+    }
+  },
+
+  /**
+   * Cache papers to localStorage
+   */
+  cachePapers(papers: ChemistryPaper[]): void {
+    try {
+      const cacheData: CacheData = {
+        papers,
+        timestamp: Date.now()
+      };
+      
+      localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+      localStorage.setItem(CACHE_EXPIRY_KEY, (Date.now() + CACHE_DURATION).toString());
+      console.log('Papers cached successfully');
+    } catch (error) {
+      console.error('Error caching papers:', error);
+      // If localStorage is full, clear old cache
+      this.clearCache();
+    }
+  },
+
+  /**
+   * Clear the cache
+   */
+  clearCache(): void {
+    localStorage.removeItem(CACHE_KEY);
+    localStorage.removeItem(CACHE_EXPIRY_KEY);
+    questionCache.clear();
+    console.log('Cache cleared');
+  },
+
+  /**
+   * Get cache status
+   */
+  getCacheStatus(): { isCached: boolean; expiresIn: number | null; paperCount: number } {
+    const cached = this.getCachedPapers();
+    const expiry = localStorage.getItem(CACHE_EXPIRY_KEY);
+    
+    if (!cached || !expiry) {
+      return { isCached: false, expiresIn: null, paperCount: 0 };
+    }
+
+    const expiryTime = parseInt(expiry, 10);
+    const expiresIn = Math.max(0, expiryTime - Date.now());
+
+    return {
+      isCached: true,
+      expiresIn,
+      paperCount: cached.length
+    };
+  }
+};
