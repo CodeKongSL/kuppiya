@@ -30,6 +30,7 @@ export interface GroupedMCQQuestion {
   question_number: number;
   question_type: "grouped_mcq";
   question_text: string | null;
+  question_images?: string[];
   group_instructions: string | null;
   sub_questions: SubQuestion[];
   answer_table: AnswerTable;
@@ -45,15 +46,16 @@ export interface QuestionTable {
 export interface AssertionReasonQuestion {
   question_number: number;
   question_type: "assertion_reason";
+  question_images?: string[];
   group_instructions: string | null;
   question_table: QuestionTable;
 }
 
 // Union type for all question types
-export type ChemistryQuestion = BasicMCQQuestion | GroupedMCQQuestion | AssertionReasonQuestion;
+export type PhysicsQuestion = BasicMCQQuestion | GroupedMCQQuestion | AssertionReasonQuestion;
 
-export interface ChemistryQuestionResponse {
+export interface PhysicsQuestionResponse {
   success: boolean;
-  data: ChemistryQuestion;
+  data: PhysicsQuestion;
   message?: string;
 }

@@ -8,6 +8,8 @@ import { bioService } from "@/bio/services/bioService";
 import { BioPaper } from "@/bio/models/BioPaper";
 import { chemistryService } from "@/chemistry/services/chemistryService";
 import { ChemistryPaper } from "@/chemistry/models/ChemistryPaper";
+import { physicsService } from "@/physics/services/physicsService";
+import { PhysicsPaper } from "@/physics/models/PhysicsPaper";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export const PapersList = () => {
@@ -15,6 +17,7 @@ export const PapersList = () => {
   const navigate = useNavigate();
   const [bioPapers, setBioPapers] = useState<BioPaper[]>([]);
   const [chemistryPapers, setChemistryPapers] = useState<ChemistryPaper[]>([]);
+  const [physicsPapers, setPhysicsPapers] = useState<PhysicsPaper[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -25,6 +28,8 @@ export const PapersList = () => {
       fetchBiologyPapers();
     } else if (subject === 'Chemistry') {
       fetchChemistryPapers();
+    } else if (subject === 'Physics') {
+      fetchPhysicsPapers();
     }
   }, [subject]);
 
@@ -90,12 +95,35 @@ export const PapersList = () => {
     }
   };
 
+  const fetchPhysicsPapers = async (forceRefresh = false) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const papers = await physicsService.getAllPapers();
+      setPhysicsPapers(papers);
+      
+      if (forceRefresh) {
+        setCacheInfo(`Refreshed! Loaded ${papers.length} papers`);
+        setTimeout(() => setCacheInfo(null), 3000);
+      }
+    } catch (err) {
+      setError('Failed to load physics papers. Please try again later.');
+      console.error('Error loading physics papers:', err);
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     if (subject === 'Bio') {
       await fetchBiologyPapers(true);
     } else if (subject === 'Chemistry') {
       await fetchChemistryPapers(true);
+    } else if (subject === 'Physics') {
+      await fetchPhysicsPapers(true);
     }
   };
 
@@ -108,6 +136,9 @@ export const PapersList = () => {
       chemistryService.clearCache();
       setCacheInfo('Cache cleared');
       fetchChemistryPapers(true);
+    } else if (subject === 'Physics') {
+      setCacheInfo('Cache cleared');
+      fetchPhysicsPapers(true);
     }
   };
 
@@ -121,7 +152,9 @@ export const PapersList = () => {
     ? bioPapers 
     : subject === 'Chemistry' 
       ? chemistryPapers 
-      : getPapersBySubject(subject);
+      : subject === 'Physics'
+        ? physicsPapers
+        : getPapersBySubject(subject);
 
   return (
     <div className="min-h-screen bg-background">
@@ -135,7 +168,7 @@ export const PapersList = () => {
             Back to Subjects
           </Button>
 
-          {(subject === 'Bio' || subject === 'Chemistry') && !loading && (
+          {(subject === 'Bio' || subject === 'Chemistry' || subject === 'Physics') && !loading && (
             <div className="flex gap-2">
               <Button
                 onClick={handleRefresh}
@@ -171,7 +204,7 @@ export const PapersList = () => {
                 ? 'Loading papers...' 
                 : `Choose from ${papers.length} years of past examination papers`}
             </p>
-            {(subject === 'Bio' || subject === 'Chemistry') && cacheInfo && !loading && (
+            {(subject === 'Bio' || subject === 'Chemistry' || subject === 'Physics') && cacheInfo && !loading && (
               <span className="text-sm text-muted-foreground/70 flex items-center gap-1">
                 <Clock className="h-3 w-3" />
                 {cacheInfo}
@@ -186,7 +219,9 @@ export const PapersList = () => {
           <Alert variant="destructive" className="mb-6">
             <AlertDescription>
               {error}
-              {((subject === 'Bio' && bioPapers.length > 0) || (subject === 'Chemistry' && chemistryPapers.length > 0)) && (
+              {((subject === 'Bio' && bioPapers.length > 0) || 
+                (subject === 'Chemistry' && chemistryPapers.length > 0) || 
+                (subject === 'Physics' && physicsPapers.length > 0)) && (
                 <span className="block mt-2 text-sm">
                   Showing cached papers from previous session.
                 </span>
@@ -195,7 +230,7 @@ export const PapersList = () => {
           </Alert>
         )}
 
-        {loading && (subject === 'Bio' ? bioPapers.length === 0 : subject === 'Chemistry' ? chemistryPapers.length === 0 : false) ? (
+        {loading && (subject === 'Bio' ? bioPapers.length === 0 : subject === 'Chemistry' ? chemistryPapers.length === 0 : subject === 'Physics' ? physicsPapers.length === 0 : false) ? (
           <div className="flex flex-col justify-center items-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
             <p className="text-muted-foreground">Loading papers from server...</p>
@@ -243,6 +278,34 @@ export const PapersList = () => {
                       title: paper.title || `Chemistry Examination ${paper.year}`,
                       questions: [],
                       duration: paper.duration || 60,
+                    }} 
+                  />
+                ))
+              ) : (
+                <div className="col-span-full text-center py-12">
+                  <p className="text-muted-foreground text-lg">No papers available yet</p>
+                  <Button 
+                    onClick={handleRefresh} 
+                    variant="outline" 
+                    className="mt-4"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Try Again
+                  </Button>
+                </div>
+              )
+            ) : subject === 'Physics' ? (
+              physicsPapers.length > 0 ? (
+                physicsPapers.map((paper, index) => (
+                  <PaperCard 
+                    key={paper.paper_id || `physics-paper-${index}`}
+                    paper={{
+                      id: paper.paper_id || `PAPER-${paper._id}-${index}`,
+                      year: parseInt(paper.exam_info.year),
+                      subject: 'Physics',
+                      title: `Physics Examination ${paper.exam_info.year}`,
+                      questions: [],
+                      duration: 60,
                     }} 
                   />
                 ))
