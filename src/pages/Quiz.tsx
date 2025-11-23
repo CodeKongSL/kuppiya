@@ -652,7 +652,7 @@ export const Quiz = () => {
                                 key={idx}
                                 src={imgUrl} 
                                 alt={`Question image ${idx + 1}`} 
-                                className="max-w-full h-auto rounded-md border"
+                                className="max-w-md md:max-w-lg max-h-96 h-auto rounded-md border object-contain mx-auto"
                               />
                             ))}
                           </div>
@@ -699,7 +699,7 @@ export const Quiz = () => {
                                 key={idx}
                                 src={imgUrl} 
                                 alt={`Question image ${idx + 1}`} 
-                                className="max-w-full h-auto rounded-md border"
+                                className="max-w-md md:max-w-lg max-h-96 h-auto rounded-md border object-contain mx-auto"
                               />
                             ))}
                           </div>
@@ -761,7 +761,7 @@ export const Quiz = () => {
                                 key={idx}
                                 src={imgUrl} 
                                 alt={`Question image ${idx + 1}`} 
-                                className="max-w-full h-auto rounded-md border"
+                                className="max-w-md md:max-w-lg max-h-96 h-auto rounded-md border object-contain mx-auto"
                               />
                             ))}
                           </div>
