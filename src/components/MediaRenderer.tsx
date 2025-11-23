@@ -16,8 +16,8 @@ export const MediaRenderer = ({ media, className = "" }: MediaRendererProps) => 
     return (
       <img 
         src={media.url} 
-        alt={media.alt || 'Question image'} 
-        className={`max-w-full h-auto rounded-md ${className}`}
+        alt={media.alt || 'Option image'} 
+        className={`max-w-xs max-h-48 h-auto rounded-md object-contain ${className}`}
       />
     );
   }
