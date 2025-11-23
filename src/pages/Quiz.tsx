@@ -456,6 +456,28 @@ export const Quiz = () => {
                     </Button>
                   )}
                 </div>
+
+                {/* Mobile Quick Navigation */}
+                <div className="lg:hidden pt-3 border-t">
+                  <p className="text-sm text-muted-foreground mb-2">Quick Navigation:</p>
+                  <div className="grid grid-cols-10 gap-1.5">
+                    {Array.from({ length: totalQuestions }).map((_, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleQuestionJump(idx)}
+                        className={`aspect-square rounded-md text-xs font-medium transition-all ${
+                          idx === currentQuestion
+                            ? 'bg-primary text-primary-foreground scale-105 shadow-md'
+                            : answers[idx] !== -1
+                            ? 'bg-success/20 text-success border-2 border-success'
+                            : 'bg-secondary text-muted-foreground hover:bg-secondary/70'
+                        }`}
+                      >
+                        {idx + 1}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
