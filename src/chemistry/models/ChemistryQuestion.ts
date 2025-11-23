@@ -1,9 +1,18 @@
+// Media type for questions and answers
+export interface Media {
+  type: "text" | "image";
+  text?: string;
+  url?: string;
+  alt?: string;
+}
+
 // Basic MCQ (Questions 1-30)
 export interface BasicMCQQuestion {
   question_number: number;
   question_type: "";
   question_text: string | null;
-  options: string[];
+  question_images?: string[];
+  options: Media[];
 }
 
 // Grouped MCQ (Questions 31-40)

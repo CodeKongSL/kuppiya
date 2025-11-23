@@ -12,6 +12,7 @@ import { bioService } from "@/bio/services/bioService";
 import { BioQuestion } from "@/bio/models/BioQuestion";
 import { chemistryService } from "@/chemistry/services/chemistryService";
 import { ChemistryQuestion } from "@/chemistry/models/ChemistryQuestion";
+import { MediaRenderer } from "@/components/MediaRenderer";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -295,6 +296,21 @@ export const Quiz = () => {
                             {chemistryQuestion.question_text}
                           </div>
                         )}
+                        
+                        {/* Render question images if available */}
+                        {chemistryQuestion.question_images && chemistryQuestion.question_images.length > 0 && (
+                          <div className="space-y-2">
+                            {chemistryQuestion.question_images.map((imgUrl, idx) => (
+                              <img 
+                                key={idx}
+                                src={imgUrl} 
+                                alt={`Question image ${idx + 1}`} 
+                                className="max-w-full h-auto rounded-md border"
+                              />
+                            ))}
+                          </div>
+                        )}
+                        
                         <RadioGroup
                           value={answers[currentQuestion]?.toString()}
                           onValueChange={handleAnswerChange}
@@ -311,7 +327,7 @@ export const Quiz = () => {
                             >
                               <RadioGroupItem value={idx.toString()} id={`option-${idx}`} />
                               <Label htmlFor={`option-${idx}`} className="flex-1 cursor-pointer text-sm md:text-base">
-                                {option}
+                                <MediaRenderer media={option} />
                               </Label>
                             </div>
                           ))}
@@ -574,6 +590,20 @@ export const Quiz = () => {
                     ) : (
                       <p className="text-base md:text-lg leading-relaxed">{bioQuestion.question_text}</p>
                     )}
+                    
+                    {/* Render question images if available */}
+                    {bioQuestion.question_images && bioQuestion.question_images.length > 0 && (
+                      <div className="space-y-2">
+                        {bioQuestion.question_images.map((imgUrl, idx) => (
+                          <img 
+                            key={idx}
+                            src={imgUrl} 
+                            alt={`Question image ${idx + 1}`} 
+                            className="max-w-full h-auto rounded-md border"
+                          />
+                        ))}
+                      </div>
+                    )}
 
                     <RadioGroup
                       value={answers[currentQuestion]?.toString()}
@@ -594,7 +624,7 @@ export const Quiz = () => {
                             htmlFor={`option-${idx}`}
                             className="flex-1 cursor-pointer text-sm md:text-base"
                           >
-                            {option}
+                            <MediaRenderer media={option} />
                           </Label>
                         </div>
                       ))}
