@@ -4,6 +4,14 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Navigation } from "./components/Navigation";
@@ -16,33 +24,61 @@ import { Review } from "./pages/Review";
 import { History } from "./pages/History";
 import { Login } from "./pages/Login";
 import NotFound from "./pages/NotFound";
-import { LogOut, Loader2 } from "lucide-react";
+import { LogOut, Loader2, User, Mail } from "lucide-react";
 
 const queryClient = new QueryClient();
 
 const UserProfile = () => {
   const { logout, user } = useAuth0();
 
+  const getInitials = (name: string | undefined) => {
+    if (!name) return "U";
+    const parts = name.split(" ");
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
   return (
-    <div className="flex items-center gap-4 p-4">
-      <div className="flex items-center gap-2">
-        <Avatar>
-          <AvatarImage src={user?.picture} alt={user?.name} />
-          <AvatarFallback>{user?.name?.charAt(0) || "U"}</AvatarFallback>
-        </Avatar>
-        <span className="text-sm font-medium">{user?.name}</span>
-      </div>
-      <Button
-        onClick={() =>
-          logout({ logoutParams: { returnTo: window.location.origin } })
-        }
-        variant="outline"
-        size="sm"
-      >
-        <LogOut className="mr-2 h-4 w-4" />
-        Logout
-      </Button>
-    </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+          <Avatar className="h-10 w-10 cursor-pointer">
+            <AvatarImage src={user?.picture} alt={user?.name} />
+            <AvatarFallback className="bg-blue-600 text-white font-semibold">
+              {getInitials(user?.name)}
+            </AvatarFallback>
+          </Avatar>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-64" align="end" forceMount>
+        <DropdownMenuLabel className="font-normal">
+          <div className="flex flex-col space-y-2">
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <p className="text-sm font-medium leading-none">{user?.name}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Mail className="h-4 w-4 text-muted-foreground" />
+              <p className="text-xs leading-none text-muted-foreground">
+                {user?.email}
+              </p>
+            </div>
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className="cursor-pointer text-red-600 focus:text-red-600"
+          onClick={() =>
+            logout({ logoutParams: { returnTo: window.location.origin } })
+          }
+        >
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>Logout</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };
 
@@ -90,8 +126,8 @@ const AppContent = () => {
           element={
             <ProtectedRoute>
               <div className="min-h-screen flex flex-col">
-                <header className="border-b">
-                  <div className="container mx-auto flex justify-between items-center">
+                <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                  <div className="container mx-auto flex h-16 items-center justify-between px-4">
                     <Navigation />
                     <UserProfile />
                   </div>
