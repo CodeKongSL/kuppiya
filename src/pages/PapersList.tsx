@@ -12,6 +12,15 @@ import { physicsService } from "@/physics/services/physicsService";
 import { PhysicsPaper } from "@/physics/models/PhysicsPaper";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
+// Static metadata for Physics papers (for lazy loading)
+const PHYSICS_PAPERS_METADATA = [
+  { year: 2023, questionCount: 50, duration: 120 },
+  { year: 2022, questionCount: 50, duration: 120 },
+  { year: 2021, questionCount: 50, duration: 120 },
+  { year: 2020, questionCount: 50, duration: 120 },
+  { year: 2019, questionCount: 50, duration: 120 },
+];
+
 export const PapersList = () => {
   const { subject } = useParams();
   const navigate = useNavigate();
@@ -28,9 +37,8 @@ export const PapersList = () => {
       fetchBiologyPapers();
     } else if (subject === 'Chemistry') {
       fetchChemistryPapers();
-    } else if (subject === 'Physics') {
-      fetchPhysicsPapers();
     }
+    // Physics papers are loaded lazily when user clicks "Start Practice"
   }, [subject]);
 
   const fetchBiologyPapers = async (forceRefresh = false) => {
@@ -95,36 +103,15 @@ export const PapersList = () => {
     }
   };
 
-  const fetchPhysicsPapers = async (forceRefresh = false) => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const papers = await physicsService.getAllPapers();
-      setPhysicsPapers(papers);
-      
-      if (forceRefresh) {
-        setCacheInfo(`Refreshed! Loaded ${papers.length} papers`);
-        setTimeout(() => setCacheInfo(null), 3000);
-      }
-    } catch (err) {
-      setError('Failed to load physics papers. Please try again later.');
-      console.error('Error loading physics papers:', err);
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
-    }
-  };
-
   const handleRefresh = async () => {
     setIsRefreshing(true);
     if (subject === 'Bio') {
       await fetchBiologyPapers(true);
     } else if (subject === 'Chemistry') {
       await fetchChemistryPapers(true);
-    } else if (subject === 'Physics') {
-      await fetchPhysicsPapers(true);
     }
+    // Physics papers use lazy loading, no refresh needed
+    setIsRefreshing(false);
   };
 
   const handleClearCache = () => {
@@ -136,10 +123,8 @@ export const PapersList = () => {
       chemistryService.clearCache();
       setCacheInfo('Cache cleared');
       fetchChemistryPapers(true);
-    } else if (subject === 'Physics') {
-      setCacheInfo('Cache cleared');
-      fetchPhysicsPapers(true);
     }
+    // Physics papers use lazy loading, no cache to clear
   };
 
   if (!subject) {
@@ -168,7 +153,7 @@ export const PapersList = () => {
             Back to Subjects
           </Button>
 
-          {(subject === 'Bio' || subject === 'Chemistry' || subject === 'Physics') && !loading && (
+          {(subject === 'Bio' || subject === 'Chemistry') && !loading && (
             <div className="flex gap-2">
               <Button
                 onClick={handleRefresh}
@@ -202,7 +187,7 @@ export const PapersList = () => {
             <p className="text-muted-foreground text-lg">
               {loading 
                 ? 'Loading papers...' 
-                : `Choose from ${papers.length} years of past examination papers`}
+                : `Choose from ${subject === 'Physics' ? PHYSICS_PAPERS_METADATA.length : papers.length} years of past examination papers`}
             </p>
             {(subject === 'Bio' || subject === 'Chemistry' || subject === 'Physics') && cacheInfo && !loading && (
               <span className="text-sm text-muted-foreground/70 flex items-center gap-1">
@@ -295,33 +280,20 @@ export const PapersList = () => {
                 </div>
               )
             ) : subject === 'Physics' ? (
-              physicsPapers.length > 0 ? (
-                physicsPapers.map((paper, index) => (
-                  <PaperCard 
-                    key={paper.paper_id || `physics-paper-${index}`}
-                    paper={{
-                      id: paper.paper_id || `PAPER-${paper._id}-${index}`,
-                      year: parseInt(paper.exam_info.year),
-                      subject: 'Physics',
-                      title: `Physics Examination ${paper.exam_info.year}`,
-                      questions: [],
-                      duration: 60,
-                    }} 
-                  />
-                ))
-              ) : (
-                <div className="col-span-full text-center py-12">
-                  <p className="text-muted-foreground text-lg">No papers available yet</p>
-                  <Button 
-                    onClick={handleRefresh} 
-                    variant="outline" 
-                    className="mt-4"
-                  >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Try Again
-                  </Button>
-                </div>
-              )
+              PHYSICS_PAPERS_METADATA.map((metadata, index) => (
+                <PaperCard 
+                  key={`physics-paper-${metadata.year}`}
+                  paper={{
+                    id: `PHYSICS-${metadata.year}`,
+                    year: metadata.year,
+                    subject: 'Physics',
+                    title: `Physics Examination ${metadata.year}`,
+                    questions: [],
+                    duration: metadata.duration,
+                  }}
+                  lazyLoad={true}
+                />
+              ))
             ) : (
               papers.map((paper) => (
                 <PaperCard key={paper.id} paper={paper} />
