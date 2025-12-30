@@ -129,12 +129,12 @@ const AppContent = () => {
   useEffect(() => {
     const checkNicStatus = () => {
       if (isAuthenticated && user) {
-        const hasProvidedNic = localStorage.getItem(`nic_verified_${user.sub}`);
+        const userCreated = localStorage.getItem(`user_created_${user.sub}`);
         
         console.log("User authenticated:", user.sub);
-        console.log("Has provided NIC:", hasProvidedNic);
+        console.log("User already created in backend:", userCreated);
         
-        if (!hasProvidedNic) {
+        if (!userCreated) {
           console.log("Showing NIC dialog for new user");
           setShowNicDialog(true);
         }
@@ -159,29 +159,30 @@ const AppContent = () => {
     setNicLoading(true);
 
     try {
-      // TODO: In the future, make API call to backend to validate NIC
-      // const token = await getAccessTokenSilently();
-      // const response = await fetch(
-      //   "https://paper-management-system-nfdl.onrender.com/PaperMgt/api/Validate/NIC",
-      //   {
-      //     method: "POST",
-      //     headers: {
-      //       "Content-Type": "application/json",
-      //       "Authorization": `Bearer ${token}`,
-      //     },
-      //     body: JSON.stringify({
-      //       email: user?.email,
-      //       nicNumber: nicNumber,
-      //     }),
-      //   }
-      // );
-      //
-      // if (!response.ok) {
-      //   throw new Error("NIC validation failed");
-      // }
+      const token = await getAccessTokenSilently();
+      
+      const response = await fetch(
+        "https://paper-system-api.codekongsl.com/PaperMgt/api/Create/User",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            username: user?.email,
+            id_number: nicNumber,
+          }),
+        }
+      );
 
-      // For now, just store as dummy value
-      localStorage.setItem(`nic_verified_${user?.sub}`, nicNumber);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to create user");
+      }
+
+      // Successfully created user
+      localStorage.setItem(`user_created_${user?.sub}`, "true");
       
       toast({
         title: "Account Setup Complete!",
@@ -192,7 +193,7 @@ const AppContent = () => {
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to verify NIC. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to verify NIC. Please try again.",
         variant: "destructive",
       });
     } finally {

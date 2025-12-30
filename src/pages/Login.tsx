@@ -50,7 +50,7 @@ export const Login = () => {
             size="lg"
           >
             <LogIn className="mr-2 h-5 w-5" />
-            Log in with Auth0
+            Log In
           </Button>
         </CardContent>
       </Card>
