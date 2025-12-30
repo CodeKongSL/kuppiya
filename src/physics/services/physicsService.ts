@@ -1,5 +1,6 @@
 import { PhysicsPaper, PhysicsPapersResponse } from '../models/PhysicsPaper';
 import { PhysicsQuestion, PhysicsQuestionResponse } from '../models/PhysicsQuestion';
+import { api } from '@/services/apiClient';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://paper-system-api.codekongsl.com';
 
@@ -7,7 +8,7 @@ export const physicsService = {
   // Get all physics papers
   async getAllPapers(): Promise<PhysicsPaper[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/FindAll/Physics/Papers`);
+      const response = await api.get('/FindAll/Physics/Papers');
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -35,14 +36,8 @@ export const physicsService = {
   // Get a specific question by paper ID and question number
   async getQuestionByNumber(paperId: string, questionNumber: number): Promise<PhysicsQuestion> {
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/Find/Question/Id?paper_id=${paperId}&question_number=${questionNumber}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
+      const response = await api.get(
+        `/Find/Question/Id?paper_id=${paperId}&question_number=${questionNumber}`
       );
       
       if (!response.ok) {
@@ -114,7 +109,7 @@ export const physicsService = {
   // Get paper metadata
   async getPaperById(paperId: string): Promise<PhysicsPaper> {
     try {
-      const response = await fetch(`${API_BASE_URL}/FindOne/Physics/Paper/${paperId}`);
+      const response = await api.get(`/FindOne/Physics/Paper/${paperId}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -138,14 +133,8 @@ export const physicsService = {
   // Get a specific paper by subject and year (lazy loading)
   async getPaperByYear(subject: string, year: string): Promise<PhysicsPaper> {
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/Find/Papers/Subject/Year?subject=${encodeURIComponent(subject)}&year=${encodeURIComponent(year)}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
+      const response = await api.get(
+        `/Find/Papers/Subject/Year?subject=${encodeURIComponent(subject)}&year=${encodeURIComponent(year)}`
       );
       
       if (!response.ok) {
