@@ -1,5 +1,6 @@
 import { BioPaper } from '../models/BioPaper';
 import { BioQuestion } from '../models/BioQuestion';
+import { api } from '@/services/apiClient';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -34,12 +35,7 @@ export const bioService = {
       }
 
       console.log('Fetching biology papers from API...');
-      const response = await fetch(`${API_BASE_URL}/FindAll/Biology/Papers`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await api.get('/FindAll/Biology/Papers');
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -102,14 +98,8 @@ export const bioService = {
     }
 
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/Find/Question/Id?paper_id=${paperId}&question_number=${questionNumber}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
+      const response = await api.get(
+        `/Find/Question/Id?paper_id=${paperId}&question_number=${questionNumber}`
       );
 
       if (!response.ok) {

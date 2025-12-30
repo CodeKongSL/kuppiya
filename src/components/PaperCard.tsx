@@ -1,3 +1,4 @@
+import React from "react";
 import { Calendar, Clock, FileText, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,19 +8,40 @@ import { useNavigate } from "react-router-dom";
 
 interface PaperCardProps {
   paper: ExamPaper;
+  lazyLoad?: boolean; // Enable lazy loading (fetch on button click)
 }
 
-export const PaperCard = ({ paper }: PaperCardProps) => {
+export const PaperCard = ({ paper, lazyLoad = false }: PaperCardProps) => {
   const navigate = useNavigate();
   const attempts = getAttemptsByPaper(paper.id);
   const lastAttempt = attempts[attempts.length - 1];
+  const [isLoading, setIsLoading] = React.useState(false);
 
 
-  // Check if this is a Biology or Chemistry paper (ID starts with "PAPER-")
-  // For Bio/Chemistry, prefer paper.paper_id if available
-  const isApiPaper = (paper.id && paper.id.startsWith('PAPER-')) || false;
+  // Check if this is an API paper (Biology, Chemistry, or Physics lazy-loaded)
+  // Physics papers use "PHYSICS-" prefix, Bio/Chemistry use "PAPER-" prefix
+  const isApiPaper = lazyLoad || (paper.id && (paper.id.startsWith('PAPER-') || paper.id.startsWith('PHYSICS-')));
 
-  const handleStartPractice = () => {
+  const handleStartPractice = async () => {
+    // For lazy loaded Physics papers, fetch the paper first
+    if (lazyLoad && paper.subject === 'Physics') {
+      setIsLoading(true);
+      try {
+        const { physicsService } = await import('@/physics/services/physicsService');
+        // Use lowercase subject name as required by API
+        const fetchedPaper = await physicsService.getPaperByYear('physics', paper.year.toString());
+        
+        // Navigate with the fetched paper ID
+        const quizId = fetchedPaper.paper_id || fetchedPaper._id;
+        navigate(`/quiz/${quizId}?subject=Physics`);
+      } catch (error) {
+        console.error('Error loading paper:', error);
+        alert('Failed to load paper. Please try again.');
+        setIsLoading(false);
+      }
+      return;
+    }
+
     // For API papers, use paper.paper_id if available, otherwise use paper.id
     const quizId = (paper as any).paper_id || paper.id;
     
@@ -82,8 +104,9 @@ export const PaperCard = ({ paper }: PaperCardProps) => {
         <Button 
           onClick={handleStartPractice}
           className="w-full bg-gradient-primary hover:opacity-90 transition-opacity"
+          disabled={isLoading}
         >
-          {attempts.length > 0 ? 'Practice Again' : 'Start Practice'}
+          {isLoading ? 'Loading...' : (attempts.length > 0 ? 'Practice Again' : 'Start Practice')}
         </Button>
       </CardContent>
     </Card>

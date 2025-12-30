@@ -25,6 +25,8 @@ import { History } from "./pages/History";
 import { Login } from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import { LogOut, Loader2, User, Mail } from "lucide-react";
+import { initializeApiClient } from "./services/apiClient";
+import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
@@ -104,7 +106,16 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const AppContent = () => {
-  const { isAuthenticated, isLoading } = useAuth0();
+  const { isAuthenticated, isLoading, getAccessTokenSilently } = useAuth0();
+
+  // Initialize API client with Auth0 token getter
+  useEffect(() => {
+    if (isAuthenticated) {
+      initializeApiClient({
+        getAccessToken: getAccessTokenSilently,
+      });
+    }
+  }, [isAuthenticated, getAccessTokenSilently]);
 
   if (isLoading) {
     return (
