@@ -3,6 +3,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -26,7 +29,8 @@ import { Login } from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import { LogOut, Loader2, User, Mail } from "lucide-react";
 import { initializeApiClient } from "./services/apiClient";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 const queryClient = new QueryClient();
 
@@ -106,7 +110,11 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const AppContent = () => {
-  const { isAuthenticated, isLoading, getAccessTokenSilently } = useAuth0();
+  const { isAuthenticated, isLoading, getAccessTokenSilently, user } = useAuth0();
+  const { toast } = useToast();
+  const [showNicDialog, setShowNicDialog] = useState(false);
+  const [nicNumber, setNicNumber] = useState("");
+  const [nicLoading, setNicLoading] = useState(false);
 
   // Initialize API client with Auth0 token getter
   useEffect(() => {
@@ -116,6 +124,81 @@ const AppContent = () => {
       });
     }
   }, [isAuthenticated, getAccessTokenSilently]);
+
+  // Check if new user needs to provide NIC
+  useEffect(() => {
+    const checkNicStatus = () => {
+      if (isAuthenticated && user) {
+        const hasProvidedNic = localStorage.getItem(`nic_verified_${user.sub}`);
+        
+        console.log("User authenticated:", user.sub);
+        console.log("Has provided NIC:", hasProvidedNic);
+        
+        if (!hasProvidedNic) {
+          console.log("Showing NIC dialog for new user");
+          setShowNicDialog(true);
+        }
+      }
+    };
+
+    checkNicStatus();
+  }, [isAuthenticated, user]);
+
+  const handleNicSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!nicNumber.trim()) {
+      toast({
+        title: "NIC Required",
+        description: "Please enter your NIC number to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setNicLoading(true);
+
+    try {
+      // TODO: In the future, make API call to backend to validate NIC
+      // const token = await getAccessTokenSilently();
+      // const response = await fetch(
+      //   "https://paper-management-system-nfdl.onrender.com/PaperMgt/api/Validate/NIC",
+      //   {
+      //     method: "POST",
+      //     headers: {
+      //       "Content-Type": "application/json",
+      //       "Authorization": `Bearer ${token}`,
+      //     },
+      //     body: JSON.stringify({
+      //       email: user?.email,
+      //       nicNumber: nicNumber,
+      //     }),
+      //   }
+      // );
+      //
+      // if (!response.ok) {
+      //   throw new Error("NIC validation failed");
+      // }
+
+      // For now, just store as dummy value
+      localStorage.setItem(`nic_verified_${user?.sub}`, nicNumber);
+      
+      toast({
+        title: "Account Setup Complete!",
+        description: "Welcome to Paper Management System",
+      });
+
+      setShowNicDialog(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to verify NIC. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setNicLoading(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -129,38 +212,90 @@ const AppContent = () => {
   }
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route
-          path="/*"
-          element={
-            <ProtectedRoute>
-              <div className="min-h-screen flex flex-col">
-                <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                  <div className="container mx-auto flex h-16 items-center justify-between px-4">
-                    <Navigation />
-                    <UserProfile />
-                  </div>
-                </header>
-                <main className="flex-1">
-                  <Routes>
-                    <Route path="/" element={<Dashboard />} />
-                    <Route path="/subjects" element={<SubjectSelection />} />
-                    <Route path="/papers/:subject" element={<PapersList />} />
-                    <Route path="/quiz/:paperId" element={<Quiz />} />
-                    <Route path="/results/:attemptId" element={<Results />} />
-                    <Route path="/review/:attemptId" element={<Review />} />
-                    <Route path="/history" element={<History />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </main>
-              </div>
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
-    </BrowserRouter>
+    <>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route
+            path="/*"
+            element={
+              <ProtectedRoute>
+                <div className="min-h-screen flex flex-col">
+                  <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                    <div className="container mx-auto flex h-16 items-center justify-between px-4">
+                      <Navigation />
+                      <UserProfile />
+                    </div>
+                  </header>
+                  <main className="flex-1">
+                    <Routes>
+                      <Route path="/" element={<Dashboard />} />
+                      <Route path="/subjects" element={<SubjectSelection />} />
+                      <Route path="/papers/:subject" element={<PapersList />} />
+                      <Route path="/quiz/:paperId" element={<Quiz />} />
+                      <Route path="/results/:attemptId" element={<Results />} />
+                      <Route path="/review/:attemptId" element={<Review />} />
+                      <Route path="/history" element={<History />} />
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </main>
+                </div>
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </BrowserRouter>
+
+      {/* NIC Collection Dialog for New Users */}
+      <Dialog open={showNicDialog} onOpenChange={(open) => {
+        // Prevent closing dialog by clicking outside
+        if (!open) return;
+      }}>
+        <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Complete Your Profile</DialogTitle>
+            <DialogDescription>
+              Please enter your NIC number to complete your account setup. This is required for verification.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleNicSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="nic" className="text-sm font-medium">
+                NIC Number<span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="nic"
+                type="text"
+                required
+                value={nicNumber}
+                onChange={(e) => setNicNumber(e.target.value)}
+                className="focus:border-blue-600 focus:ring-blue-600"
+                placeholder="Enter your NIC number"
+                disabled={nicLoading}
+              />
+              <p className="text-xs text-gray-500">
+                Each NIC can only be associated with one account.
+              </p>
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              disabled={nicLoading}
+            >
+              {nicLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Verifying...
+                </>
+              ) : (
+                "Continue"
+              )}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
