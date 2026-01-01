@@ -4,6 +4,10 @@ import { api } from '@/services/apiClient';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://paper-system-api.codekongsl.com';
 
+// Question cache for individual questions
+const questionCache = new Map<string, { question: PhysicsQuestion; timestamp: number }>();
+const QUESTION_CACHE_DURATION = 2 * 60 * 60 * 1000; // 2 hours
+
 export const physicsService = {
   // Get all physics papers
   async getAllPapers(): Promise<PhysicsPaper[]> {
@@ -34,7 +38,22 @@ export const physicsService = {
   },
 
   // Get a specific question by paper ID and question number
-  async getQuestionByNumber(paperId: string, questionNumber: number): Promise<PhysicsQuestion> {
+  async getQuestionByNumber(
+    paperId: string, 
+    questionNumber: number,
+    useCache = true
+  ): Promise<PhysicsQuestion> {
+    const cacheKey = `${paperId}_${questionNumber}`;
+    
+    // Check cache first
+    if (useCache) {
+      const cached = questionCache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < QUESTION_CACHE_DURATION) {
+        console.log(`Using cached Physics question ${questionNumber}`);
+        return cached.question;
+      }
+    }
+
     try {
       const response = await api.get(
         `/Find/Question/Id?paper_id=${paperId}&question_number=${questionNumber}`
@@ -98,6 +117,13 @@ export const physicsService = {
           };
         });
       }
+
+      // Cache the question
+      questionCache.set(cacheKey, {
+        question,
+        timestamp: Date.now()
+      });
+      console.log(`Cached Physics question ${questionNumber}`);
 
       return question;
     } catch (error) {
