@@ -228,5 +228,51 @@ export const chemistryService = {
       expiresIn,
       paperCount: cached.length
     };
+  },
+
+  /**
+   * Get a specific paper by subject and year (lazy loading)
+   * Used for on-demand loading when user clicks "Start Practice"
+   */
+  async getPaperByYear(subject: string, year: string): Promise<ChemistryPaper> {
+    try {
+      const response = await api.get(
+        `/Find/Papers/Subject/Year?subject=${encodeURIComponent(subject)}&year=${encodeURIComponent(year)}`
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Chemistry Paper by Year API Response:', data);
+      
+      // Handle different response structures
+      // Check if response has success flag and data
+      if (data.success && data.data) {
+        return Array.isArray(data.data) ? data.data[0] : data.data;
+      }
+      // Check if data itself is the paper object
+      if (data._id || data.paper_id) {
+        return data;
+      }
+      // Check if data.data is the paper without success flag
+      if (data.data) {
+        const paperData = Array.isArray(data.data) ? data.data[0] : data.data;
+        if (paperData && (paperData._id || paperData.paper_id)) {
+          return paperData;
+        }
+      }
+      // Check if response is an array
+      if (Array.isArray(data) && data.length > 0) {
+        return data[0];
+      }
+      
+      console.error('Unexpected response structure:', data);
+      throw new Error(data.message || 'Failed to fetch paper for the specified year');
+    } catch (error) {
+      console.error(`Error fetching Chemistry paper for year ${year}:`, error);
+      throw error;
+    }
   }
 };

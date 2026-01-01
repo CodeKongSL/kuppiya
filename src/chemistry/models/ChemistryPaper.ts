@@ -1,4 +1,5 @@
 export interface ChemistryPaper {
+  _id?: string; // MongoDB ID from API
   paper_id: string;
   year: number;
   title: string;

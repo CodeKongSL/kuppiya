@@ -19,8 +19,8 @@ export const PaperCard = ({ paper, lazyLoad = false }: PaperCardProps) => {
 
 
   // Check if this is an API paper (Biology, Chemistry, or Physics lazy-loaded)
-  // Bio papers use "BIO-" prefix, Physics papers use "PHYSICS-" prefix, Chemistry uses "PAPER-" prefix
-  const isApiPaper = lazyLoad || (paper.id && (paper.id.startsWith('PAPER-') || paper.id.startsWith('PHYSICS-') || paper.id.startsWith('BIO-')));
+  // Bio papers use "BIO-" prefix, Chemistry uses "CHEMISTRY-" prefix, Physics uses "PHYSICS-" prefix
+  const isApiPaper = lazyLoad || (paper.id && (paper.id.startsWith('BIO-') || paper.id.startsWith('CHEMISTRY-') || paper.id.startsWith('PHYSICS-')));
 
   const handleStartPractice = async () => {
     // For lazy loaded Bio papers, fetch the paper first
@@ -28,12 +28,27 @@ export const PaperCard = ({ paper, lazyLoad = false }: PaperCardProps) => {
       setIsLoading(true);
       try {
         const { bioService } = await import('@/bio/services/bioService');
-        // Use lowercase subject name as required by API
         const fetchedPaper = await bioService.getPaperByYear('Biology', paper.year.toString());
         
-        // Navigate with the fetched paper ID (prefer paper_id, fallback to _id)
         const quizId = fetchedPaper.paper_id || fetchedPaper._id || '';
         navigate(`/quiz/${quizId}?subject=Bio`);
+      } catch (error) {
+        console.error('Error loading paper:', error);
+        alert('Failed to load paper. Please try again.');
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    // For lazy loaded Chemistry papers, fetch the paper first
+    if (lazyLoad && paper.subject === 'Chemistry') {
+      setIsLoading(true);
+      try {
+        const { chemistryService } = await import('@/chemistry/services/chemistryService');
+        const fetchedPaper = await chemistryService.getPaperByYear('Chemistry', paper.year.toString());
+        
+        const quizId = fetchedPaper.paper_id || fetchedPaper._id || '';
+        navigate(`/quiz/${quizId}?subject=Chemistry`);
       } catch (error) {
         console.error('Error loading paper:', error);
         alert('Failed to load paper. Please try again.');
