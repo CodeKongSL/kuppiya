@@ -19,10 +19,29 @@ export const PaperCard = ({ paper, lazyLoad = false }: PaperCardProps) => {
 
 
   // Check if this is an API paper (Biology, Chemistry, or Physics lazy-loaded)
-  // Physics papers use "PHYSICS-" prefix, Bio/Chemistry use "PAPER-" prefix
-  const isApiPaper = lazyLoad || (paper.id && (paper.id.startsWith('PAPER-') || paper.id.startsWith('PHYSICS-')));
+  // Bio papers use "BIO-" prefix, Physics papers use "PHYSICS-" prefix, Chemistry uses "PAPER-" prefix
+  const isApiPaper = lazyLoad || (paper.id && (paper.id.startsWith('PAPER-') || paper.id.startsWith('PHYSICS-') || paper.id.startsWith('BIO-')));
 
   const handleStartPractice = async () => {
+    // For lazy loaded Bio papers, fetch the paper first
+    if (lazyLoad && paper.subject === 'Bio') {
+      setIsLoading(true);
+      try {
+        const { bioService } = await import('@/bio/services/bioService');
+        // Use lowercase subject name as required by API
+        const fetchedPaper = await bioService.getPaperByYear('Biology', paper.year.toString());
+        
+        // Navigate with the fetched paper ID (prefer paper_id, fallback to _id)
+        const quizId = fetchedPaper.paper_id || fetchedPaper._id || '';
+        navigate(`/quiz/${quizId}?subject=Bio`);
+      } catch (error) {
+        console.error('Error loading paper:', error);
+        alert('Failed to load paper. Please try again.');
+        setIsLoading(false);
+      }
+      return;
+    }
+
     // For lazy loaded Physics papers, fetch the paper first
     if (lazyLoad && paper.subject === 'Physics') {
       setIsLoading(true);
