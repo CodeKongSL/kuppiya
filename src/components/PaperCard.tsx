@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ExamPaper, getAttemptsByPaper } from "@/data/examData";
 import { useNavigate } from "react-router-dom";
+import { startPaper } from "@/services/apiClient";
 
 interface PaperCardProps {
   paper: ExamPaper;
@@ -31,7 +32,12 @@ export const PaperCard = ({ paper, lazyLoad = false }: PaperCardProps) => {
         const fetchedPaper = await bioService.getPaperByYear('Biology', paper.year.toString());
         
         const quizId = fetchedPaper.paper_id || fetchedPaper._id || '';
-        navigate(`/quiz/${quizId}?subject=Bio`);
+        
+        // Call startPaper API before navigating
+        const startResponse = await startPaper(quizId);
+        const startedAt = startResponse?.data?.started_at || new Date().toISOString();
+        
+        navigate(`/quiz/${quizId}?subject=Bio`, { state: { startedAt } });
       } catch (error) {
         console.error('Error loading paper:', error);
         alert('Failed to load paper. Please try again.');
@@ -48,7 +54,12 @@ export const PaperCard = ({ paper, lazyLoad = false }: PaperCardProps) => {
         const fetchedPaper = await chemistryService.getPaperByYear('Chemistry', paper.year.toString());
         
         const quizId = fetchedPaper.paper_id || fetchedPaper._id || '';
-        navigate(`/quiz/${quizId}?subject=Chemistry`);
+        
+        // Call startPaper API before navigating
+        const startResponse = await startPaper(quizId);
+        const startedAt = startResponse?.data?.started_at || new Date().toISOString();
+        
+        navigate(`/quiz/${quizId}?subject=Chemistry`, { state: { startedAt } });
       } catch (error) {
         console.error('Error loading paper:', error);
         alert('Failed to load paper. Please try again.');
@@ -67,7 +78,12 @@ export const PaperCard = ({ paper, lazyLoad = false }: PaperCardProps) => {
         
         // Navigate with the fetched paper ID
         const quizId = fetchedPaper.paper_id || fetchedPaper._id;
-        navigate(`/quiz/${quizId}?subject=Physics`);
+        
+        // Call startPaper API before navigating
+        const startResponse = await startPaper(quizId);
+        const startedAt = startResponse?.data?.started_at || new Date().toISOString();
+        
+        navigate(`/quiz/${quizId}?subject=Physics`, { state: { startedAt } });
       } catch (error) {
         console.error('Error loading paper:', error);
         alert('Failed to load paper. Please try again.');

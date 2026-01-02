@@ -84,3 +84,138 @@ export const api = {
       body: data ? JSON.stringify(data) : undefined,
     }),
 };
+
+/**
+ * Start a paper (notify backend that paper has been started)
+ * @param paperId - The ID of the paper to start
+ * @returns Response containing paper_answers_id, user_id, paper_id, status, started_at
+ */
+export const startPaper = async (paperId: string): Promise<any> => {
+  try {
+    // Get access token from Auth0
+    const token = apiConfig 
+      ? await apiConfig.getAccessToken()
+      : null;
+
+    // Prepare headers with authentication
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+
+    // Add Authorization header if token is available
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(
+      `https://paper-management-system-nfdl.onrender.com/PaperMgt/api/Start/Paper?paper_id=${paperId}`,
+      {
+        method: 'POST',
+        headers,
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Paper started successfully:', data);
+    return data;
+  } catch (error) {
+    console.error('Error starting paper:', error);
+    throw error;
+  }
+};
+
+/**
+ * Save an answer for a specific question
+ * @param paperId - The ID of the paper
+ * @param questionNumber - The question number (1-indexed)
+ * @param selectedOptionIndex - The selected option index (0-indexed in UI, but API expects 1-indexed)
+ * @returns Response containing saved answer details
+ */
+export const saveAnswer = async (
+  paperId: string,
+  questionNumber: number,
+  selectedOptionIndex: number
+): Promise<any> => {
+  try {
+    // Get access token from Auth0
+    const token = apiConfig 
+      ? await apiConfig.getAccessToken()
+      : null;
+
+    // Prepare headers with authentication
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+
+    // Add Authorization header if token is available
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(
+      `https://paper-management-system-nfdl.onrender.com/PaperMgt/api/save/Answer?paper_id=${paperId}&question_number=${questionNumber}&selected_option_index=${selectedOptionIndex}`,
+      {
+        method: 'POST',
+        headers,
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Answer saved successfully:', data);
+    return data;
+  } catch (error) {
+    console.error('Error saving answer:', error);
+    throw error;
+  }
+};
+
+/**
+ * Complete a paper (submit the paper)
+ * @param paperId - The ID of the paper to complete
+ * @returns Response containing completion status
+ */
+export const completePaper = async (paperId: string): Promise<any> => {
+  try {
+    // Get access token from Auth0
+    const token = apiConfig 
+      ? await apiConfig.getAccessToken()
+      : null;
+
+    // Prepare headers with authentication
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+
+    // Add Authorization header if token is available
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(
+      `https://paper-management-system-nfdl.onrender.com/PaperMgt/api/Complete/Paper?paper_id=${paperId}`,
+      {
+        method: 'POST',
+        headers,
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Paper completed successfully:', data);
+    return data;
+  } catch (error) {
+    console.error('Error completing paper:', error);
+    throw error;
+  }
+};
