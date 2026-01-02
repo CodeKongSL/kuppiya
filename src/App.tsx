@@ -127,22 +127,59 @@ const AppContent = () => {
 
   // Check if new user needs to provide NIC
   useEffect(() => {
-    const checkNicStatus = () => {
+    const checkUserExists = async () => {
       if (isAuthenticated && user) {
-        const userCreated = localStorage.getItem(`user_created_${user.sub}`);
-        
-        console.log("User authenticated:", user.sub);
-        console.log("User already created in backend:", userCreated);
-        
-        if (!userCreated) {
-          console.log("Showing NIC dialog for new user");
-          setShowNicDialog(true);
+        try {
+          const token = await getAccessTokenSilently();
+          
+          // Get all users and check if current user exists
+          const response = await fetch(
+            "https://paper-system-api.codekongsl.com/PaperMgt/api/FindAll/Users",
+            {
+              method: "GET",
+              headers: {
+                "Authorization": `Bearer ${token}`,
+              },
+            }
+          );
+
+          if (response.ok) {
+            const result = await response.json();
+            const users = result.data || [];
+            
+            // Check if user with this email exists
+            const userExists = users.some((u: any) => u.username === user.email);
+
+            if (userExists) {
+              // User exists in backend - existing user logging in
+              console.log("User exists in backend, skipping NIC dialog");
+              localStorage.setItem(`user_created_${user.sub}`, "true");
+            } else {
+              // User doesn't exist - new signup
+              console.log("New user detected, showing NIC dialog");
+              setShowNicDialog(true);
+            }
+          } else {
+            console.error("Error fetching users:", response.status);
+            // Fallback: check localStorage
+            const userCreated = localStorage.getItem(`user_created_${user.sub}`);
+            if (!userCreated) {
+              setShowNicDialog(true);
+            }
+          }
+        } catch (error) {
+          console.error("Failed to check user existence:", error);
+          // Fallback: check localStorage
+          const userCreated = localStorage.getItem(`user_created_${user.sub}`);
+          if (!userCreated) {
+            setShowNicDialog(true);
+          }
         }
       }
     };
 
-    checkNicStatus();
-  }, [isAuthenticated, user]);
+    checkUserExists();
+  }, [isAuthenticated, user, getAccessTokenSilently]);
 
   const handleNicSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -176,20 +213,38 @@ const AppContent = () => {
         }
       );
 
-      if (!response.ok) {
+      if (response.ok) {
+        // Successfully created user
+        localStorage.setItem(`user_created_${user?.sub}`, "true");
+        
+        toast({
+          title: "Account Setup Complete!",
+          description: "Welcome to Paper Management System",
+        });
+
+        setShowNicDialog(false);
+      } else if (response.status === 409) {
+        // Conflict - check if it's duplicate user or duplicate NIC
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.message || "";
+        
+        if (errorMessage.toLowerCase().includes("user already exists") || 
+            errorMessage.toLowerCase().includes("email")) {
+          // Same user trying again - treat as success
+          localStorage.setItem(`user_created_${user?.sub}`, "true");
+          toast({
+            title: "Welcome Back!",
+            description: "Your account already exists.",
+          });
+          setShowNicDialog(false);
+        } else {
+          // NIC taken by another user
+          throw new Error("This NIC number is already registered with another account.");
+        }
+      } else {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || "Failed to create user");
       }
-
-      // Successfully created user
-      localStorage.setItem(`user_created_${user?.sub}`, "true");
-      
-      toast({
-        title: "Account Setup Complete!",
-        description: "Welcome to Paper Management System",
-      });
-
-      setShowNicDialog(false);
     } catch (error) {
       toast({
         title: "Error",

@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { Clock, AlertCircle, Loader2 } from "lucide-react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
+import { Clock, AlertCircle, Loader2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -15,6 +15,7 @@ import { ChemistryQuestion } from "@/chemistry/models/ChemistryQuestion";
 import { physicsService } from "@/physics/services/physicsService";
 import { PhysicsQuestion } from "@/physics/models/PhysicsQuestion";
 import { MediaRenderer } from "@/components/MediaRenderer";
+import { saveAnswer, completePaper } from "@/services/apiClient";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +31,10 @@ export const Quiz = () => {
   const { paperId } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Get started_at from navigation state
+  const startedAt = location.state?.startedAt;
 
   // Get subject from URL query parameter
   const subjectFromUrl = searchParams.get('subject');
@@ -48,18 +53,33 @@ export const Quiz = () => {
       isBioPaper,
       isChemistryPaper,
       isPhysicsPaper,
-      isApiPaper
+      isApiPaper,
+      startedAt
     });
-  }, [paperId, subjectFromUrl, isBioPaper, isChemistryPaper, isPhysicsPaper, isApiPaper]);
+  }, [paperId, subjectFromUrl, isBioPaper, isChemistryPaper, isPhysicsPaper, isApiPaper, startedAt]);
 
   // For non-API papers, find the paper in local data
   const paper = !isApiPaper ? examPapers.find(p => p.id === paperId) : undefined;
 
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<number[]>(new Array(50).fill(-1));
-  const [timeLeft, setTimeLeft] = useState(paper ? paper.duration * 60 : 3600);
+  
+  // Calculate time left from startedAt (2 hours = 7200 seconds)
+  const calculateTimeLeft = () => {
+    if (!startedAt || !isApiPaper) {
+      return paper ? paper.duration * 60 : 3600;
+    }
+    const deadline = new Date(startedAt).getTime() + (2 * 60 * 60 * 1000); // 2 hours
+    const now = Date.now();
+    const secondsLeft = Math.floor((deadline - now) / 1000);
+    return Math.max(0, secondsLeft);
+  };
+  
+  const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [showWarningDialog, setShowWarningDialog] = useState(isApiPaper); // Show warning for API papers
   const [startTime] = useState(Date.now());
+  const hasAutoSubmitted = useRef(false);
 
   // API paper-specific states
   const [bioQuestion, setBioQuestion] = useState<BioQuestion | null>(null);
@@ -74,6 +94,29 @@ export const Quiz = () => {
       return;
     }
 
+    // Prevent refresh/close for API papers
+    if (isApiPaper) {
+      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+        e.preventDefault();
+        e.returnValue = 'Your progress will be lost! The paper will be auto-submitted if you leave.';
+        return 'Your progress will be lost! The paper will be auto-submitted if you leave.';
+      };
+
+      window.addEventListener('beforeunload', handleBeforeUnload);
+
+      // Auto-submit paper if user force-closes
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+        // If component unmounts and paper is still active, try to auto-submit
+        if (paperId && !hasAutoSubmitted.current) {
+          completePaper(paperId).catch(console.error);
+        }
+      };
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isApiPaper, paperId, navigate, paper]);
+
+  useEffect(() => {
     if (isBioPaper && paperId) {
       loadBioQuestion(1); // Load first question
     } else if (isChemistryPaper && paperId) {
@@ -81,10 +124,19 @@ export const Quiz = () => {
     } else if (isPhysicsPaper && paperId) {
       loadPhysicsQuestion(1); // Load first question
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paperId, isBioPaper, isChemistryPaper, isPhysicsPaper]);
 
+  // Timer effect
+  useEffect(() => {
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
+          // Auto-submit when timer expires for API papers
+          if (isApiPaper && paperId && !hasAutoSubmitted.current) {
+            hasAutoSubmitted.current = true;
+            handleAutoSubmit();
+          }
           return 0;
         }
         return prev - 1;
@@ -93,7 +145,7 @@ export const Quiz = () => {
 
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paperId, navigate]);
+  }, [isApiPaper, paperId]);
 
   const loadBioQuestion = async (questionNumber: number) => {
     if (!paperId) return;
@@ -163,10 +215,37 @@ export const Quiz = () => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleAnswerChange = (value: string) => {
+  const handleAnswerChange = async (value: string) => {
     const newAnswers = [...answers];
-    newAnswers[currentQuestion] = parseInt(value);
+    const selectedIndex = parseInt(value);
+    newAnswers[currentQuestion] = selectedIndex;
     setAnswers(newAnswers);
+
+    // Save answer to API for API papers
+    if (isApiPaper && paperId) {
+      try {
+        // API expects 1-indexed option (UI uses 0-indexed), so add 1
+        await saveAnswer(paperId, currentQuestion + 1, selectedIndex + 1);
+        console.log(`Answer saved for Q${currentQuestion + 1}: Option ${selectedIndex + 1}`);
+      } catch (error) {
+        console.error('Failed to save answer:', error);
+        // Don't show error toast to avoid disrupting quiz flow
+      }
+    }
+  };
+
+  const handleAutoSubmit = async () => {
+    if (!paperId || !isApiPaper) return;
+
+    try {
+      await completePaper(paperId);
+      toast.error("Time's up! Paper auto-submitted.");
+      navigate('/subjects');
+    } catch (error) {
+      console.error('Auto-submit failed:', error);
+      toast.error("Failed to submit paper. Please contact support.");
+      navigate('/subjects');
+    }
   };
 
   const handleNext = () => {
@@ -186,11 +265,17 @@ export const Quiz = () => {
     setCurrentQuestion(index);
   };
 
-  const handleSubmit = () => {
-    if (isApiPaper) {
-      // For now, just navigate back. You can implement API-specific result handling later
-      toast.success("Quiz submitted successfully!");
-      navigate('/subjects');
+  const handleSubmit = async () => {
+    if (isApiPaper && paperId) {
+      hasAutoSubmitted.current = true;
+      try {
+        await completePaper(paperId);
+        toast.success("Quiz submitted successfully!");
+        navigate('/subjects');
+      } catch (error) {
+        console.error('Submit failed:', error);
+        toast.error("Failed to submit paper. Please try again.");
+      }
       return;
     }
 
@@ -237,6 +322,68 @@ export const Quiz = () => {
     });
   }, [isChemistryPaper, chemistryQuestion, loadingQuestion]);
 
+  // Floating Timer Component - must be defined before any returns
+  const FloatingTimer = useMemo(() => {
+    const isWarning = timeLeft < 600; // Less than 10 minutes
+    const mins = Math.floor(timeLeft / 60);
+    const secs = timeLeft % 60;
+
+    return (
+      <div 
+        className={`fixed top-20 right-4 z-[100] px-4 py-3 rounded-lg shadow-2xl transition-all duration-300 ${
+          isWarning 
+            ? 'bg-red-500 text-white animate-pulse' 
+            : 'bg-primary text-primary-foreground'
+        }`}
+        style={{ position: 'fixed' }}
+      >
+        <div className="flex items-center gap-2">
+          <Clock className="h-5 w-5" />
+          <span className="text-xl font-mono font-bold">
+            {mins.toString().padStart(2, '0')}:{secs.toString().padStart(2, '0')}
+          </span>
+        </div>
+        {isWarning && (
+          <p className="text-xs mt-1">Time running out!</p>
+        )}
+      </div>
+    );
+  }, [timeLeft]);
+
+  // Warning Dialog - memoized to prevent re-renders
+  const WarningDialogComponent = useMemo(() => (
+    <AlertDialog open={showWarningDialog} onOpenChange={setShowWarningDialog}>
+      <AlertDialogContent className="max-w-md fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] z-[200]">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-500">
+            <AlertTriangle className="h-6 w-6" />
+            Important Instructions
+          </AlertDialogTitle>
+          <AlertDialogDescription className="space-y-3 text-base text-left">
+            <p className="font-semibold text-foreground">⏰ You have 2 hours to complete this paper.</p>
+            <p className="text-red-600 dark:text-red-500 font-semibold">
+              ⚠️ DO NOT refresh or close this page during the exam!
+            </p>
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p>• If you refresh, the paper will be automatically submitted</p>
+              <p>• Your answers are saved automatically as you select them</p>
+              <p>• The timer will turn red when less than 10 minutes remain</p>
+              <p>• The paper will auto-submit when time expires</p>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogAction 
+            onClick={() => setShowWarningDialog(false)}
+            className="w-full"
+          >
+            I Understand, Start Exam
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  ), [showWarningDialog]);
+
   // Show loading state for API papers when question is not loaded yet
   if (isApiPaper && !bioQuestion && !chemistryQuestion && !physicsQuestion && loadingQuestion) {
     return (
@@ -252,7 +399,10 @@ export const Quiz = () => {
   // Render Chemistry question
   if (isChemistryPaper && chemistryQuestion) {
     return (
-      <div className="min-h-screen bg-background">
+      <>
+        {isApiPaper && FloatingTimer}
+        {isApiPaper && WarningDialogComponent}
+        <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-4 md:py-6">
           {/* Header */}
           <Card className="mb-4 shadow-card">
@@ -568,12 +718,16 @@ export const Quiz = () => {
           </AlertDialog>
         </div>
       </div>
+      </>
     );
   }
 
   // Render Physics question
   if (isPhysicsPaper && physicsQuestion) {
     return (
+      <>
+        {isApiPaper && FloatingTimer}
+        {isApiPaper && WarningDialogComponent}
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-4 md:py-6">
           {/* Header */}
@@ -918,6 +1072,7 @@ export const Quiz = () => {
           </AlertDialog>
         </div>
       </div>
+      </>
     );
   }
 
@@ -932,6 +1087,9 @@ export const Quiz = () => {
     ].filter(Boolean); // Remove undefined/empty if any
 
     return (
+      <>
+        {isApiPaper && FloatingTimer}
+        {isApiPaper && WarningDialogComponent}
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-4 md:py-6">
           {/* Header */}
@@ -1161,6 +1319,7 @@ export const Quiz = () => {
           </AlertDialog>
         </div>
       </div>
+      </>
     );
   }
 
