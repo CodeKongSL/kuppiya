@@ -15,7 +15,7 @@ import { ChemistryQuestion } from "@/chemistry/models/ChemistryQuestion";
 import { physicsService } from "@/physics/services/physicsService";
 import { PhysicsQuestion } from "@/physics/models/PhysicsQuestion";
 import { MediaRenderer } from "@/components/MediaRenderer";
-import { saveAnswer, completePaper } from "@/services/apiClient";
+import { saveAnswer, completePaper, checkAnswers } from "@/services/apiClient";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,8 +33,9 @@ export const Quiz = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Get started_at from navigation state
+  // Get started_at and paper_answers_id from navigation state
   const startedAt = location.state?.startedAt;
+  const paperAnswersId = location.state?.paperAnswersId;
 
   // Get subject from URL query parameter
   const subjectFromUrl = searchParams.get('subject');
@@ -49,6 +50,7 @@ export const Quiz = () => {
   useEffect(() => {
     console.log('Quiz Debug:', {
       paperId,
+      paperAnswersId,
       subjectFromUrl,
       isBioPaper,
       isChemistryPaper,
@@ -56,7 +58,7 @@ export const Quiz = () => {
       isApiPaper,
       startedAt
     });
-  }, [paperId, subjectFromUrl, isBioPaper, isChemistryPaper, isPhysicsPaper, isApiPaper, startedAt]);
+  }, [paperId, paperAnswersId, subjectFromUrl, isBioPaper, isChemistryPaper, isPhysicsPaper, isApiPaper, startedAt]);
 
   // For non-API papers, find the paper in local data
   const paper = !isApiPaper ? examPapers.find(p => p.id === paperId) : undefined;
@@ -108,13 +110,13 @@ export const Quiz = () => {
       return () => {
         window.removeEventListener('beforeunload', handleBeforeUnload);
         // If component unmounts and paper is still active, try to auto-submit
-        if (paperId && !hasAutoSubmitted.current) {
-          completePaper(paperId).catch(console.error);
+        if (paperAnswersId && !hasAutoSubmitted.current) {
+          completePaper(paperAnswersId).catch(console.error);
         }
       };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isApiPaper, paperId, navigate, paper]);
+  }, [isApiPaper, paperAnswersId, navigate, paper]);
 
   useEffect(() => {
     if (isBioPaper && paperId) {
@@ -222,10 +224,10 @@ export const Quiz = () => {
     setAnswers(newAnswers);
 
     // Save answer to API for API papers
-    if (isApiPaper && paperId) {
+    if (isApiPaper && paperAnswersId) {
       try {
         // API expects 1-indexed option (UI uses 0-indexed), so add 1
-        await saveAnswer(paperId, currentQuestion + 1, selectedIndex + 1);
+        await saveAnswer(paperAnswersId, currentQuestion + 1, selectedIndex + 1);
         console.log(`Answer saved for Q${currentQuestion + 1}: Option ${selectedIndex + 1}`);
       } catch (error) {
         console.error('Failed to save answer:', error);
@@ -235,12 +237,24 @@ export const Quiz = () => {
   };
 
   const handleAutoSubmit = async () => {
-    if (!paperId || !isApiPaper) return;
+    if (!paperAnswersId || !isApiPaper) return;
 
     try {
-      await completePaper(paperId);
+      // Complete the paper
+      await completePaper(paperAnswersId);
+      
+      // Check answers to get results
+      const checkResponse = await checkAnswers(paperAnswersId);
+      const resultId = checkResponse?.data?.result_id;
+      
       toast.error("Time's up! Paper auto-submitted.");
-      navigate('/subjects');
+      
+      // Navigate to results if we have result_id
+      if (resultId) {
+        navigate(`/results/${resultId}?paperAnswersId=${paperAnswersId}`);
+      } else {
+        navigate('/subjects');
+      }
     } catch (error) {
       console.error('Auto-submit failed:', error);
       toast.error("Failed to submit paper. Please contact support.");
@@ -266,12 +280,24 @@ export const Quiz = () => {
   };
 
   const handleSubmit = async () => {
-    if (isApiPaper && paperId) {
+    if (isApiPaper && paperAnswersId) {
       hasAutoSubmitted.current = true;
       try {
-        await completePaper(paperId);
+        // Complete the paper first
+        await completePaper(paperAnswersId);
+        
+        // Check answers to get results
+        const checkResponse = await checkAnswers(paperAnswersId);
+        const resultId = checkResponse?.data?.result_id;
+        
         toast.success("Quiz submitted successfully!");
-        navigate('/subjects');
+        
+        // Navigate to results page with result_id and paper_answers_id
+        if (resultId) {
+          navigate(`/results/${resultId}?paperAnswersId=${paperAnswersId}`);
+        } else {
+          navigate('/subjects');
+        }
       } catch (error) {
         console.error('Submit failed:', error);
         toast.error("Failed to submit paper. Please try again.");

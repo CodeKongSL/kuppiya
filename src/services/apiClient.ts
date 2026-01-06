@@ -130,13 +130,13 @@ export const startPaper = async (paperId: string): Promise<any> => {
 
 /**
  * Save an answer for a specific question
- * @param paperId - The ID of the paper
+ * @param paperAnswersId - The paper_answers_id from the startPaper response
  * @param questionNumber - The question number (1-indexed)
  * @param selectedOptionIndex - The selected option index (0-indexed in UI, but API expects 1-indexed)
  * @returns Response containing saved answer details
  */
 export const saveAnswer = async (
-  paperId: string,
+  paperAnswersId: string,
   questionNumber: number,
   selectedOptionIndex: number
 ): Promise<any> => {
@@ -157,7 +157,7 @@ export const saveAnswer = async (
     }
 
     const response = await fetch(
-      `https://paper-management-system-nfdl.onrender.com/PaperMgt/api/save/Answer?paper_id=${paperId}&question_number=${questionNumber}&selected_option_index=${selectedOptionIndex}`,
+      `https://paper-management-system-nfdl.onrender.com/PaperMgt/api/save/Answer?paper_answers_id=${paperAnswersId}&question_number=${questionNumber}&selected_option_index=${selectedOptionIndex}`,
       {
         method: 'POST',
         headers,
@@ -178,11 +178,11 @@ export const saveAnswer = async (
 };
 
 /**
- * Complete a paper (submit the paper)
- * @param paperId - The ID of the paper to complete
- * @returns Response containing completion status
+ * Check answers for a completed paper
+ * @param paperAnswersId - The paper_answers_id from the startPaper response
+ * @returns Response containing result_id, user_id, paper_id, and array of results with correct/incorrect info
  */
-export const completePaper = async (paperId: string): Promise<any> => {
+export const checkAnswers = async (paperAnswersId: string): Promise<any> => {
   try {
     // Get access token from Auth0
     const token = apiConfig 
@@ -200,7 +200,92 @@ export const completePaper = async (paperId: string): Promise<any> => {
     }
 
     const response = await fetch(
-      `https://paper-management-system-nfdl.onrender.com/PaperMgt/api/Complete/Paper?paper_id=${paperId}`,
+      `https://paper-management-system-nfdl.onrender.com/PaperMgt/api/Check/Answers?paper_answers_id=${paperAnswersId}`,
+      {
+        method: 'GET',
+        headers,
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Answers checked successfully:', data);
+    return data;
+  } catch (error) {
+    console.error('Error checking answers:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get paper result summary for all user's papers
+ * @returns Response containing array of paper summaries with statistics
+ */
+export const getPaperResultSummary = async (): Promise<any> => {
+  try {
+    // Get access token from Auth0
+    const token = apiConfig 
+      ? await apiConfig.getAccessToken()
+      : null;
+
+    // Prepare headers with authentication
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+
+    // Add Authorization header if token is available
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(
+      `https://paper-management-system-nfdl.onrender.com/PaperMgt/api/FindAll/Papers/Result/Summary`,
+      {
+        method: 'GET',
+        headers,
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Paper result summary fetched:', data);
+    return data;
+  } catch (error) {
+    console.error('Error fetching paper result summary:', error);
+    throw error;
+  }
+};
+
+/**
+ * Complete a paper (submit the paper)
+ * @param paperAnswersId - The paper_answers_id from the startPaper response
+ * @returns Response containing completion status
+ */
+export const completePaper = async (paperAnswersId: string): Promise<any> => {
+  try {
+    // Get access token from Auth0
+    const token = apiConfig 
+      ? await apiConfig.getAccessToken()
+      : null;
+
+    // Prepare headers with authentication
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+
+    // Add Authorization header if token is available
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(
+      `https://paper-management-system-nfdl.onrender.com/PaperMgt/api/Complete/Paper?paper_answers_id=${paperAnswersId}`,
       {
         method: 'POST',
         headers,

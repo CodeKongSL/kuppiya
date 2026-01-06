@@ -36,8 +36,9 @@ export const PaperCard = ({ paper, lazyLoad = false }: PaperCardProps) => {
         // Call startPaper API before navigating
         const startResponse = await startPaper(quizId);
         const startedAt = startResponse?.data?.started_at || new Date().toISOString();
+        const paperAnswersId = startResponse?.data?.paper_answers_id;
         
-        navigate(`/quiz/${quizId}?subject=Bio`, { state: { startedAt } });
+        navigate(`/quiz/${quizId}?subject=Bio`, { state: { startedAt, paperAnswersId } });
       } catch (error) {
         console.error('Error loading paper:', error);
         alert('Failed to load paper. Please try again.');
@@ -58,8 +59,9 @@ export const PaperCard = ({ paper, lazyLoad = false }: PaperCardProps) => {
         // Call startPaper API before navigating
         const startResponse = await startPaper(quizId);
         const startedAt = startResponse?.data?.started_at || new Date().toISOString();
+        const paperAnswersId = startResponse?.data?.paper_answers_id;
         
-        navigate(`/quiz/${quizId}?subject=Chemistry`, { state: { startedAt } });
+        navigate(`/quiz/${quizId}?subject=Chemistry`, { state: { startedAt, paperAnswersId } });
       } catch (error) {
         console.error('Error loading paper:', error);
         alert('Failed to load paper. Please try again.');
@@ -82,8 +84,9 @@ export const PaperCard = ({ paper, lazyLoad = false }: PaperCardProps) => {
         // Call startPaper API before navigating
         const startResponse = await startPaper(quizId);
         const startedAt = startResponse?.data?.started_at || new Date().toISOString();
+        const paperAnswersId = startResponse?.data?.paper_answers_id;
         
-        navigate(`/quiz/${quizId}?subject=Physics`, { state: { startedAt } });
+        navigate(`/quiz/${quizId}?subject=Physics`, { state: { startedAt, paperAnswersId } });
       } catch (error) {
         console.error('Error loading paper:', error);
         alert('Failed to load paper. Please try again.');
