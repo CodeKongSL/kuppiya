@@ -109,12 +109,18 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Public token for accessing public endpoints
+const PUBLIC_API_TOKEN = import.meta.env.VITE_PUBLIC_API_TOKEN || "sk-LD9m2VqRkZ7pHxF3uBvJtWnXyAeCs48YiQMBgaKPT1rLoSxUEhfCzNdA63yVwmKEXRb4qNpTdGVYuZcHJWkmfBsX5a9LtoP";
+
 const AppContent = () => {
   const { isAuthenticated, isLoading, getAccessTokenSilently, user } = useAuth0();
   const { toast } = useToast();
   const [showNicDialog, setShowNicDialog] = useState(false);
   const [nicNumber, setNicNumber] = useState("");
   const [nicLoading, setNicLoading] = useState(false);
+
+  // Debug: Check if public token is loaded
+  console.log("PUBLIC_API_TOKEN loaded:", PUBLIC_API_TOKEN ? `Yes (${PUBLIC_API_TOKEN.substring(0, 20)}...)` : "NO - MISSING!");
 
   // Initialize API client with Auth0 token getter
   useEffect(() => {
@@ -129,57 +135,23 @@ const AppContent = () => {
   useEffect(() => {
     const checkUserExists = async () => {
       if (isAuthenticated && user) {
-        try {
-          const token = await getAccessTokenSilently();
-          
-          // Get all users and check if current user exists
-          const response = await fetch(
-            "https://paper-system-api.codekongsl.com/PaperMgt/api/FindAll/Users",
-            {
-              method: "GET",
-              headers: {
-                "Authorization": `Bearer ${token}`,
-              },
-            }
-          );
-
-          if (response.ok) {
-            const result = await response.json();
-            const users = result.data || [];
-            
-            // Check if user with this email exists
-            const userExists = users.some((u: any) => u.username === user.email);
-
-            if (userExists) {
-              // User exists in backend - existing user logging in
-              console.log("User exists in backend, skipping NIC dialog");
-              localStorage.setItem(`user_created_${user.sub}`, "true");
-            } else {
-              // User doesn't exist - new signup
-              console.log("New user detected, showing NIC dialog");
-              setShowNicDialog(true);
-            }
-          } else {
-            console.error("Error fetching users:", response.status);
-            // Fallback: check localStorage
-            const userCreated = localStorage.getItem(`user_created_${user.sub}`);
-            if (!userCreated) {
-              setShowNicDialog(true);
-            }
-          }
-        } catch (error) {
-          console.error("Failed to check user existence:", error);
-          // Fallback: check localStorage
-          const userCreated = localStorage.getItem(`user_created_${user.sub}`);
-          if (!userCreated) {
-            setShowNicDialog(true);
-          }
+        // Check localStorage first to avoid unnecessary API calls
+        const userCreated = localStorage.getItem(`user_created_${user.sub}`);
+        
+        if (userCreated) {
+          console.log("User already created (from localStorage)");
+          return;
         }
+
+        // For new users or users without localStorage flag, show NIC dialog
+        // We'll determine if they're truly new when they submit the NIC
+        console.log("Checking if user needs NIC dialog");
+        setShowNicDialog(true);
       }
     };
 
     checkUserExists();
-  }, [isAuthenticated, user, getAccessTokenSilently]);
+  }, [isAuthenticated, user]);
 
   const handleNicSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -196,7 +168,59 @@ const AppContent = () => {
     setNicLoading(true);
 
     try {
+      // Step 1: Check if user with this NIC already exists using public endpoint
+      console.log("Checking if user exists with NIC:", nicNumber);
+      console.log("Public Token for check:", PUBLIC_API_TOKEN ? "Token exists" : "Token is missing!");
+      
+      const checkResponse = await fetch(
+        `https://paper-system-api.codekongsl.com/PaperMgt/public/users/check?id_number=${nicNumber}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${PUBLIC_API_TOKEN}`,
+          },
+        }
+      );
+      
+      console.log("Check response status:", checkResponse.status);
+
+      if (checkResponse.ok) {
+        const checkData = await checkResponse.json();
+        console.log("User check response:", checkData);
+        
+        if (checkData.exists) {
+          // User with this NIC already exists
+          if (checkData.username === user?.email) {
+            // Same user - this is a returning user
+            localStorage.setItem(`user_created_${user?.sub}`, "true");
+            toast({
+              title: "Welcome Back!",
+              description: "Your account already exists.",
+            });
+            setShowNicDialog(false);
+            return;
+          } else {
+            // Different user - NIC is taken
+            throw new Error(
+              `This NIC number is already registered with ${checkData.username}. Please use a different NIC or contact support.`
+            );
+          }
+        }
+      }
+
+      // Step 2: User doesn't exist, create new user
+      console.log("Creating new user...");
+      
+      // Get Auth0 token for the Create/User endpoint
       const token = await getAccessTokenSilently();
+      
+      const requestBody = {
+        username: user?.email,
+        id_number: nicNumber,
+        auth0_sub: user?.sub,
+      };
+      console.log("Request body:", requestBody);
       
       const response = await fetch(
         "https://paper-system-api.codekongsl.com/PaperMgt/api/Create/User",
@@ -204,14 +228,13 @@ const AppContent = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
+            "Authorization": `Bearer ${token}`, // Use Auth0 token for this endpoint
           },
-          body: JSON.stringify({
-            username: user?.email,
-            id_number: nicNumber,
-          }),
+          body: JSON.stringify(requestBody),
         }
       );
+      
+      console.log("Create user response status:", response.status);
 
       if (response.ok) {
         // Successfully created user
@@ -229,7 +252,8 @@ const AppContent = () => {
         const errorMessage = errorData.message || "";
         
         if (errorMessage.toLowerCase().includes("user already exists") || 
-            errorMessage.toLowerCase().includes("email")) {
+            errorMessage.toLowerCase().includes("email") ||
+            errorMessage.toLowerCase().includes("username")) {
           // Same user trying again - treat as success
           localStorage.setItem(`user_created_${user?.sub}`, "true");
           toast({
@@ -241,11 +265,28 @@ const AppContent = () => {
           // NIC taken by another user
           throw new Error("This NIC number is already registered with another account.");
         }
+      } else if (response.status === 401) {
+        // Unauthorized - token issue
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.message || "Authentication failed";
+        
+        console.error("401 Error details:", errorData);
+        
+        // Try to provide more helpful error message
+        if (errorMessage.includes("User ID not found in metadata")) {
+          throw new Error(
+            "Authentication setup incomplete. Please contact support with this error: Backend requires user_id in token metadata for new user registration."
+          );
+        } else {
+          throw new Error(`Authentication error: ${errorMessage}`);
+        }
       } else {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to create user");
+        console.error("Error response:", errorData);
+        throw new Error(errorData.message || `Failed to create user (${response.status})`);
       }
     } catch (error) {
+      console.error("NIC submission error:", error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to verify NIC. Please try again.",
