@@ -15,7 +15,7 @@ import { ChemistryQuestion } from "@/chemistry/models/ChemistryQuestion";
 import { physicsService } from "@/physics/services/physicsService";
 import { PhysicsQuestion } from "@/physics/models/PhysicsQuestion";
 import { MediaRenderer } from "@/components/MediaRenderer";
-import { saveAnswer, completePaper } from "@/services/apiClient";
+import { saveAnswer, completePaper, checkAnswers } from "@/services/apiClient";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -240,9 +240,21 @@ export const Quiz = () => {
     if (!paperAnswersId || !isApiPaper) return;
 
     try {
+      // Complete the paper
       await completePaper(paperAnswersId);
+      
+      // Check answers to get results
+      const checkResponse = await checkAnswers(paperAnswersId);
+      const resultId = checkResponse?.data?.result_id;
+      
       toast.error("Time's up! Paper auto-submitted.");
-      navigate('/subjects');
+      
+      // Navigate to results if we have result_id
+      if (resultId) {
+        navigate(`/results/${resultId}?paperAnswersId=${paperAnswersId}`);
+      } else {
+        navigate('/subjects');
+      }
     } catch (error) {
       console.error('Auto-submit failed:', error);
       toast.error("Failed to submit paper. Please contact support.");
@@ -271,9 +283,21 @@ export const Quiz = () => {
     if (isApiPaper && paperAnswersId) {
       hasAutoSubmitted.current = true;
       try {
+        // Complete the paper first
         await completePaper(paperAnswersId);
+        
+        // Check answers to get results
+        const checkResponse = await checkAnswers(paperAnswersId);
+        const resultId = checkResponse?.data?.result_id;
+        
         toast.success("Quiz submitted successfully!");
-        navigate('/subjects');
+        
+        // Navigate to results page with result_id and paper_answers_id
+        if (resultId) {
+          navigate(`/results/${resultId}?paperAnswersId=${paperAnswersId}`);
+        } else {
+          navigate('/subjects');
+        }
       } catch (error) {
         console.error('Submit failed:', error);
         toast.error("Failed to submit paper. Please try again.");
