@@ -86,7 +86,7 @@ export const Dashboard = () => {
         </div>
 
         {/* Performance Chart */}
-        <PerformanceChart attempts={attempts} />
+        <PerformanceChart />
 
         {/* Recent Papers */}
         <Card className="shadow-card">
