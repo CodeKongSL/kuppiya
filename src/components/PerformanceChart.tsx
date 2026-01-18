@@ -42,7 +42,15 @@ interface ProgressResponse {
   message: string;
 }
 
-export const PerformanceChart = () => {
+interface PerformanceChartProps {
+  onDataLoaded?: (stats: {
+    totalAttempts: number;
+    avgScore: number;
+    bestScore: number;
+  }) => void;
+}
+
+export const PerformanceChart = ({ onDataLoaded }: PerformanceChartProps) => {
   const { getAccessTokenSilently } = useAuth0();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -94,6 +102,27 @@ export const PerformanceChart = () => {
       // Convert the data object to an array
       const dataArray = Object.values(result.data);
       setProgressData(dataArray);
+
+      // Calculate and pass stats to parent component (Dashboard)
+      if (onDataLoaded && dataArray.length > 0) {
+        const totalAttempts = dataArray.reduce((sum, paper) => sum + paper.summary.total_attempts, 0);
+        const bestScore = Math.max(...dataArray.map(paper => paper.summary.best_score));
+        
+        // Calculate weighted average
+        let totalScore = 0;
+        let totalCount = 0;
+        dataArray.forEach(paper => {
+          totalScore += paper.summary.average_score * paper.summary.total_attempts;
+          totalCount += paper.summary.total_attempts;
+        });
+        const avgScore = totalCount > 0 ? totalScore / totalCount : 0;
+        
+        onDataLoaded({
+          totalAttempts,
+          avgScore,
+          bestScore,
+        });
+      }
     } catch (error) {
       console.error("Error fetching progress data:", error);
       toast({
