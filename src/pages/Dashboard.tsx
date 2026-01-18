@@ -1,21 +1,30 @@
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { BookOpen, TrendingUp, Target, Award } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PerformanceChart } from "@/components/PerformanceChart";
-import { examPapers, getAttemptHistory } from "@/data/examData";
+import { examPapers } from "@/data/examData";
 
 export const Dashboard = () => {
   const navigate = useNavigate();
-  const attempts = getAttemptHistory();
-  
-  const totalAttempts = attempts.length;
-  const avgScore = attempts.length > 0 
-    ? attempts.reduce((sum, a) => sum + a.percentage, 0) / attempts.length 
-    : 0;
-  const bestScore = attempts.length > 0 
-    ? Math.max(...attempts.map(a => a.percentage)) 
-    : 0;
+  const [progressStats, setProgressStats] = useState({
+    totalAttempts: 0,
+    avgScore: 0,
+    bestScore: 0,
+    loading: true,
+  });
+
+  const handleProgressDataLoaded = (stats: {
+    totalAttempts: number;
+    avgScore: number;
+    bestScore: number;
+  }) => {
+    setProgressStats({
+      ...stats,
+      loading: false,
+    });
+  };
 
   const stats = [
     {
@@ -26,19 +35,27 @@ export const Dashboard = () => {
     },
     {
       title: "Attempts Made",
-      value: totalAttempts,
+      value: progressStats.loading ? "..." : progressStats.totalAttempts,
       icon: Target,
       color: "text-accent",
     },
     {
       title: "Average Score",
-      value: avgScore > 0 ? `${avgScore.toFixed(1)}%` : "N/A",
+      value: progressStats.loading 
+        ? "..." 
+        : progressStats.avgScore > 0 
+        ? `${progressStats.avgScore.toFixed(1)}%` 
+        : "N/A",
       icon: TrendingUp,
       color: "text-success",
     },
     {
       title: "Best Score",
-      value: bestScore > 0 ? `${bestScore.toFixed(1)}%` : "N/A",
+      value: progressStats.loading 
+        ? "..." 
+        : progressStats.bestScore > 0 
+        ? `${progressStats.bestScore.toFixed(1)}%` 
+        : "N/A",
       icon: Award,
       color: "text-accent",
     },
@@ -86,7 +103,7 @@ export const Dashboard = () => {
         </div>
 
         {/* Performance Chart */}
-        <PerformanceChart />
+        <PerformanceChart onDataLoaded={handleProgressDataLoaded} />
 
         {/* Recent Papers */}
         <Card className="shadow-card">
