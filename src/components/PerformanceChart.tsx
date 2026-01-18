@@ -6,8 +6,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { Loader2, TrendingUp, TrendingDown, Target, Award, Calendar, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Loader2, TrendingUp, TrendingDown, Target, Award, Calendar, CheckCircle2, ChevronDown, ChevronUp, CalendarIcon, X, Filter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
 
 // Configuration constants
 const MAX_CHART_POINTS = 30; // Limit chart to last 30 attempts for performance
@@ -46,31 +49,41 @@ export const PerformanceChart = () => {
   const [progressData, setProgressData] = useState<PaperProgress[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [visiblePapers, setVisiblePapers] = useState(INITIAL_PAPERS_TO_SHOW);
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
 
+  // Fetch data whenever date filters change
   useEffect(() => {
     fetchProgressData();
-  }, []);
+  }, [startDate, endDate]);
 
   const fetchProgressData = async () => {
     try {
       setLoading(true);
       const token = await getAccessTokenSilently();
       
-      // Add query parameters for backend optimization
-      const params = new URLSearchParams({
-        limit: MAX_CHART_POINTS.toString(), // Limit data points per paper
-        days: '90', // Get last 90 days of data
-      });
+      // Build query parameters - only include dates if they are set
+      const params = new URLSearchParams();
       
-      const response = await fetch(
-        `https://paper-management-system-nfdl.onrender.com/PaperMgt/api/Generate/Progress/Chart?${params}`,
-        {
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      if (startDate) {
+        params.append('start_date', format(startDate, 'yyyy-MM-dd'));
+      }
+      
+      if (endDate) {
+        params.append('end_date', format(endDate, 'yyyy-MM-dd'));
+      }
+      
+      // Build URL with or without parameters
+      const url = params.toString() 
+        ? `https://paper-management-system-nfdl.onrender.com/PaperMgt/api/Generate/Progress/Chart?${params}`
+        : 'https://paper-management-system-nfdl.onrender.com/PaperMgt/api/Generate/Progress/Chart';
+      
+      const response = await fetch(url, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
       if (!response.ok) {
         throw new Error("Failed to fetch progress data");
@@ -139,6 +152,14 @@ export const PerformanceChart = () => {
     setVisiblePapers(INITIAL_PAPERS_TO_SHOW);
   }, []);
 
+  const handleClearFilters = useCallback(() => {
+    setStartDate(undefined);
+    setEndDate(undefined);
+  }, []);
+
+  // Check if filters are active
+  const hasActiveFilters = startDate !== undefined || endDate !== undefined;
+
   if (loading) {
     return (
       <Card className="shadow-card">
@@ -157,11 +178,105 @@ export const PerformanceChart = () => {
     return (
       <Card className="shadow-card">
         <CardHeader>
-          <CardTitle>Performance Over Time</CardTitle>
-          <CardDescription>Your progress will appear here after completing exams</CardDescription>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <CardTitle>Performance Over Time</CardTitle>
+              <CardDescription>Your progress will appear here after completing exams</CardDescription>
+            </div>
+          </div>
+
+          {/* Show Date Filter Bar even when no data */}
+          <div className="flex flex-wrap items-center gap-3 mt-4 p-4 bg-secondary/30 rounded-lg border border-border">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Filter by Date:</span>
+            </div>
+
+            {/* Start Date Picker */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={`justify-start text-left font-normal ${!startDate && "text-muted-foreground"}`}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {startDate ? format(startDate, "MMM dd, yyyy") : "Start Date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent
+                  mode="single"
+                  selected={startDate}
+                  onSelect={setStartDate}
+                  initialFocus
+                  disabled={(date) => endDate ? date > endDate : date > new Date()}
+                />
+              </PopoverContent>
+            </Popover>
+
+            {/* End Date Picker */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={`justify-start text-left font-normal ${!endDate && "text-muted-foreground"}`}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {endDate ? format(endDate, "MMM dd, yyyy") : "End Date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent
+                  mode="single"
+                  selected={endDate}
+                  onSelect={setEndDate}
+                  initialFocus
+                  disabled={(date) => startDate ? date < startDate : date > new Date()}
+                />
+              </PopoverContent>
+            </Popover>
+
+            {/* Clear Filters Button */}
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClearFilters}
+                className="h-9 text-muted-foreground hover:text-foreground"
+              >
+                <X className="mr-1 h-4 w-4" />
+                Clear Filters
+              </Button>
+            )}
+
+            {/* Active Filter Badges */}
+            {hasActiveFilters && (
+              <div className="flex items-center gap-2 ml-auto">
+                <Badge variant="secondary" className="text-xs">
+                  {startDate && endDate 
+                    ? `${format(startDate, "MMM dd")} - ${format(endDate, "MMM dd, yyyy")}`
+                    : startDate 
+                    ? `From ${format(startDate, "MMM dd, yyyy")}`
+                    : `Until ${format(endDate!, "MMM dd, yyyy")}`
+                  }
+                </Badge>
+              </div>
+            )}
+
+            {!hasActiveFilters && (
+              <Badge variant="outline" className="text-xs ml-auto">
+                Showing All Progress
+              </Badge>
+            )}
+          </div>
         </CardHeader>
-        <CardContent className="flex items-center justify-center h-64 text-muted-foreground">
-          No attempts yet. Start practicing!
+        <CardContent className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+          <p className="mb-3">No attempts yet. Start practicing!</p>
+          {hasActiveFilters && (
+            <p className="text-xs text-center max-w-md">
+              No progress found for the selected date range. Try adjusting your filters or clear them to see all attempts.
+            </p>
+          )}
         </CardContent>
       </Card>
     );
@@ -169,15 +284,107 @@ export const PerformanceChart = () => {
 
   return (
     <>
-      <Card 
-        className="shadow-card cursor-pointer hover:shadow-elegant transition-all"
-        onClick={handleCardClick}
-      >
+      <Card className="shadow-card">
         <CardHeader>
-          <CardTitle>Performance Over Time</CardTitle>
-          <CardDescription>Track your improvement across attempts (Click to view details)</CardDescription>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <CardTitle>Performance Over Time</CardTitle>
+              <CardDescription>Track your improvement across attempts</CardDescription>
+            </div>
+          </div>
+
+          {/* Date Filter Bar */}
+          <div className="flex flex-wrap items-center gap-3 mt-4 p-4 bg-secondary/30 rounded-lg border border-border">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Filter by Date:</span>
+            </div>
+
+            {/* Start Date Picker */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={`justify-start text-left font-normal ${!startDate && "text-muted-foreground"}`}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {startDate ? format(startDate, "MMM dd, yyyy") : "Start Date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent
+                  mode="single"
+                  selected={startDate}
+                  onSelect={setStartDate}
+                  initialFocus
+                  disabled={(date) => endDate ? date > endDate : date > new Date()}
+                />
+              </PopoverContent>
+            </Popover>
+
+            {/* End Date Picker */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={`justify-start text-left font-normal ${!endDate && "text-muted-foreground"}`}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {endDate ? format(endDate, "MMM dd, yyyy") : "End Date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent
+                  mode="single"
+                  selected={endDate}
+                  onSelect={setEndDate}
+                  initialFocus
+                  disabled={(date) => startDate ? date < startDate : date > new Date()}
+                />
+              </PopoverContent>
+            </Popover>
+
+            {/* Clear Filters Button */}
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClearFilters}
+                className="h-9 text-muted-foreground hover:text-foreground"
+              >
+                <X className="mr-1 h-4 w-4" />
+                Clear Filters
+              </Button>
+            )}
+
+            {/* Active Filter Badges */}
+            {hasActiveFilters && (
+              <div className="flex items-center gap-2 ml-auto">
+                <Badge variant="secondary" className="text-xs">
+                  {startDate && endDate 
+                    ? `${format(startDate, "MMM dd")} - ${format(endDate, "MMM dd, yyyy")}`
+                    : startDate 
+                    ? `From ${format(startDate, "MMM dd, yyyy")}`
+                    : `Until ${format(endDate!, "MMM dd, yyyy")}`
+                  }
+                </Badge>
+              </div>
+            )}
+
+            {!hasActiveFilters && (
+              <Badge variant="outline" className="text-xs ml-auto">
+                Showing All Progress
+              </Badge>
+            )}
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent 
+          className="cursor-pointer hover:bg-secondary/20 transition-colors rounded-lg p-4"
+          onClick={handleCardClick}
+        >
+          <div className="mb-2 text-xs text-muted-foreground text-center">
+            Click chart to view detailed summary
+          </div>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
