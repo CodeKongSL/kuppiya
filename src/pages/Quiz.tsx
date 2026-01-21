@@ -506,6 +506,9 @@ export const Quiz = () => {
                                 key={idx}
                                 src={imgUrl} 
                                 alt={`Question image ${idx + 1}`} 
+                                loading="lazy"
+                                crossOrigin="anonymous"
+                                referrerPolicy="no-referrer"
                                 className="max-w-full h-auto rounded-md border"
                               />
                             ))}
@@ -542,6 +545,23 @@ export const Quiz = () => {
                         {chemistryQuestion.question_text && (
                           <div className="text-base md:text-lg leading-relaxed whitespace-pre-line mb-4">
                             {chemistryQuestion.question_text}
+                          </div>
+                        )}
+                        
+                        {/* Render question images if available */}
+                        {chemistryQuestion.question_images && chemistryQuestion.question_images.length > 0 && (
+                          <div className="space-y-2 mb-4">
+                            {chemistryQuestion.question_images.map((imgUrl, idx) => (
+                              <img 
+                                key={idx}
+                                src={imgUrl} 
+                                alt={`Question image ${idx + 1}`} 
+                                loading="lazy"
+                                crossOrigin="anonymous"
+                                referrerPolicy="no-referrer"
+                                className="max-w-md md:max-w-lg max-h-96 h-auto rounded-md border object-contain mx-auto"
+                              />
+                            ))}
                           </div>
                         )}
                         
@@ -593,6 +613,23 @@ export const Quiz = () => {
                     {/* Assertion-Reason (Questions 41-50) */}
                     {chemistryQuestion.question_type === "assertion_reason" && 'question_table' in chemistryQuestion && chemistryQuestion.question_table && (
                       <>
+                        {/* Render question images if available */}
+                        {chemistryQuestion.question_images && chemistryQuestion.question_images.length > 0 && (
+                          <div className="space-y-2 mb-4">
+                            {chemistryQuestion.question_images.map((imgUrl, idx) => (
+                              <img 
+                                key={idx}
+                                src={imgUrl} 
+                                alt={`Question image ${idx + 1}`} 
+                                loading="lazy"
+                                crossOrigin="anonymous"
+                                referrerPolicy="no-referrer"
+                                className="max-w-md md:max-w-lg max-h-96 h-auto rounded-md border object-contain mx-auto"
+                              />
+                            ))}
+                          </div>
+                        )}
+                        
                         <div className="space-y-4 mb-4 p-4 bg-secondary/30 rounded-lg">
                           <div>
                             <p className="font-semibold text-sm text-purple-600 dark:text-purple-400 mb-1">Statement (A):</p>
@@ -832,6 +869,9 @@ export const Quiz = () => {
                                 key={idx}
                                 src={imgUrl} 
                                 alt={`Question image ${idx + 1}`} 
+                                loading="lazy"
+                                crossOrigin="anonymous"
+                                referrerPolicy="no-referrer"
                                 className="max-w-md md:max-w-lg max-h-96 h-auto rounded-md border object-contain mx-auto"
                               />
                             ))}
@@ -879,6 +919,9 @@ export const Quiz = () => {
                                 key={idx}
                                 src={imgUrl} 
                                 alt={`Question image ${idx + 1}`} 
+                                loading="lazy"
+                                crossOrigin="anonymous"
+                                referrerPolicy="no-referrer"
                                 className="max-w-md md:max-w-lg max-h-96 h-auto rounded-md border object-contain mx-auto"
                               />
                             ))}
@@ -941,6 +984,9 @@ export const Quiz = () => {
                                 key={idx}
                                 src={imgUrl} 
                                 alt={`Question image ${idx + 1}`} 
+                                loading="lazy"
+                                crossOrigin="anonymous"
+                                referrerPolicy="no-referrer"
                                 className="max-w-md md:max-w-lg max-h-96 h-auto rounded-md border object-contain mx-auto"
                               />
                             ))}
@@ -1180,6 +1226,9 @@ export const Quiz = () => {
                             key={idx}
                             src={imgUrl} 
                             alt={`Question image ${idx + 1}`} 
+                            loading="lazy"
+                            crossOrigin="anonymous"
+                            referrerPolicy="no-referrer"
                             className="max-w-full h-auto rounded-md border"
                           />
                         ))}

@@ -80,14 +80,14 @@ export const physicsService = {
         throw new Error('Unexpected response format');
       }
 
-      // Transform Google Drive links to thumbnail URLs (bypasses CORS)
+      // Transform Google Drive links to googleusercontent format (most reliable)
       if (question.question_images && Array.isArray(question.question_images)) {
         question.question_images = question.question_images.map((url: string) => {
-          // Convert Google Drive view links to thumbnail links
-          const match = url.match(/\/file\/d\/([^\/]+)\//);
+          // Convert Google Drive view links to lh3.googleusercontent.com format
+          const match = url.match(/\/file\/d\/([^\/]+)\//i);
           if (match && match[1]) {
-            // Use Google Drive thumbnail API with large size (sz=w1000 for width 1000px)
-            return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1000`;
+            // Use lh3.googleusercontent.com with size parameter for better caching
+            return `https://lh3.googleusercontent.com/d/${match[1]}=w1200`;
           }
           return url;
         });
@@ -100,11 +100,11 @@ export const physicsService = {
           if (option && typeof option === 'object' && option.type) {
             // Transform image URLs in options if needed
             if (option.type === 'image' && option.url) {
-              const match = option.url.match(/\/file\/d\/([^\/]+)\//);
+              const match = option.url.match(/\/file\/d\/([^\/]+)\//i);
               if (match && match[1]) {
                 return {
                   ...option,
-                  url: `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1000`
+                  url: `https://lh3.googleusercontent.com/d/${match[1]}=w1200`
                 };
               }
             }

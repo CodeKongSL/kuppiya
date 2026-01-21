@@ -122,16 +122,53 @@ export const bioService = {
         throw new Error('Unexpected response format');
       }
 
+      // Transform Google Drive links to googleusercontent format (most reliable)
+      if (question.question_images && Array.isArray(question.question_images)) {
+        question.question_images = question.question_images.map((url: string) => {
+          // Convert Google Drive view links to lh3.googleusercontent.com format
+          const match = url.match(/\/file\/d\/([^\/]+)\//i);
+          if (match && match[1]) {
+            // Use lh3.googleusercontent.com with size parameter for better caching
+            return `https://lh3.googleusercontent.com/d/${match[1]}=w1200`;
+          }
+          return url;
+        });
+      }
+
+      // Transform Google Drive links in options if they are Media objects
+      const transformMediaOption = (option: any) => {
+        if (option && typeof option === 'object' && option.type === 'image' && option.url) {
+          const match = option.url.match(/\/file\/d\/([^\/]+)\//i);
+          if (match && match[1]) {
+            return {
+              ...option,
+              url: `https://lh3.googleusercontent.com/d/${match[1]}=w1200`
+            };
+          }
+        }
+        return option;
+      };
+
       // If question.options is an array, map to option_a, option_b, ...
       if (Array.isArray(question.options)) {
+        const transformedOptions = question.options.map(transformMediaOption);
         question = {
           ...question,
-          option_a: question.options[0] || '',
-          option_b: question.options[1] || '',
-          option_c: question.options[2] || '',
-          option_d: question.options[3] || '',
-          option_e: question.options[4] || '',
+          option_a: transformedOptions[0] || '',
+          option_b: transformedOptions[1] || '',
+          option_c: transformedOptions[2] || '',
+          option_d: transformedOptions[3] || '',
+          option_e: transformedOptions[4] || '',
         };
+      } else {
+        // Transform existing option properties if they are Media objects
+        question.option_a = transformMediaOption(question.option_a);
+        question.option_b = transformMediaOption(question.option_b);
+        question.option_c = transformMediaOption(question.option_c);
+        question.option_d = transformMediaOption(question.option_d);
+        if (question.option_e) {
+          question.option_e = transformMediaOption(question.option_e);
+        }
       }
 
       // Cache the question
