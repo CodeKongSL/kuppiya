@@ -109,7 +109,7 @@ export const chemistryService = {
       const data = await response.json();
 
       // Extract the question object from possible response formats
-      let question: ChemistryQuestion;
+      let question: any;
       if (data.success && data.data) {
         question = data.data;
       } else if (data.data) {
@@ -118,6 +118,44 @@ export const chemistryService = {
         question = data;
       } else {
         throw new Error('Unexpected response format');
+      }
+
+      // Transform Google Drive links to googleusercontent format (most reliable)
+      if (question.question_images && Array.isArray(question.question_images)) {
+        question.question_images = question.question_images.map((url: string) => {
+          // Convert Google Drive view links to lh3.googleusercontent.com format
+          const match = url.match(/\/file\/d\/([^\/]+)\//i);
+          if (match && match[1]) {
+            // Use lh3.googleusercontent.com with size parameter for better caching
+            return `https://lh3.googleusercontent.com/d/${match[1]}=w1200`;
+          }
+          return url;
+        });
+      }
+
+      // Ensure options have the correct Media format and transform image URLs
+      if (Array.isArray(question.options)) {
+        question.options = question.options.map((option: any) => {
+          // If option is already in the correct format, return as is
+          if (option && typeof option === 'object' && option.type) {
+            // Transform image URLs in options if needed
+            if (option.type === 'image' && option.url) {
+              const match = option.url.match(/\/file\/d\/([^\/]+)\//i);
+              if (match && match[1]) {
+                return {
+                  ...option,
+                  url: `https://lh3.googleusercontent.com/d/${match[1]}=w1200`
+                };
+              }
+            }
+            return option;
+          }
+          // If option is a string, convert to Media format
+          return {
+            type: 'text' as const,
+            text: option
+          };
+        });
       }
 
       // Cache the question
